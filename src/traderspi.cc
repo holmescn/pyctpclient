@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "traderspi.h"
 #include "ctpclient.h"
 
 TraderSpi::TraderSpi(CtpClient *client) : _client(client)
@@ -27,5 +28,20 @@ TraderSpi::~TraderSpi()
 
 void TraderSpi::OnFrontConnected()
 {
-    _client->OnTraderFrontConnected();
+    _client->OnTdFrontConnected();
+}
+
+void TraderSpi::OnFrontDisconnected(int nReason)
+{
+    _client->OnTdFrontDisconnected(nReason);
+}
+
+void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnTdUserLogin(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
+}
+
+void TraderSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnTdUserLogout(pUserLogout, pRspInfo, nRequestID, bIsLast);
 }

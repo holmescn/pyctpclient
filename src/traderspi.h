@@ -32,4 +32,8 @@ public:
 
 public:
 	void OnFrontConnected() override;
+    void OnFrontDisconnected(int nReason) override;
+	void OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+
 };

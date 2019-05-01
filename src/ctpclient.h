@@ -20,33 +20,63 @@
 
 class CtpClient
 {
-    MdSpi *_mdSpi;
-    CThostFtdcMdApi *_mdApi;
-    TraderSpi *_traderSpi;
-    CThostFtdcTraderApi *_traderApi;
+    MdSpi *_mdSpi = nullptr;
+    CThostFtdcMdApi *_mdApi = nullptr;
+    TraderSpi *_tdSpi = nullptr;
+    CThostFtdcTraderApi *_tdApi = nullptr;
+    std::string _flowPath;
+    std::string _mdAddr;
+    std::string _tdAddr;
+    std::string _brokerId;
+    std::string _userId;
+    std::string _password;
 public:
-    CtpClient();
+    CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
     CtpClient(const CtpClient&) = delete;
     CtpClient(CtpClient&&) = delete;
     CtpClient& operator=(const CtpClient&) = delete;
     CtpClient& operator=(CtpClient&&) = delete;
-    virtual ~CtpClient() {}
+    virtual ~CtpClient();
+
+    void Run();
+public:
+    // Getter/Setter
+    inline std::string GetFlowPath() const { return _flowPath; }
+    inline void SetFlowPath(std::string flowPath) { _flowPath = flowPath; }
+    inline std::string GetMdAddr() const { return _mdAddr; }
+    inline void SetMdAddr(std::string addr) { _mdAddr = addr; }
+    inline std::string GetTdAddr() const { return _tdAddr; }
+    inline void SetTdAddr(std::string addr) { _tdAddr = addr; }
+    inline std::string GetBrokerId() const { return _brokerId; }
+    inline void SetBrokerId(std::string brokerId) { _brokerId = brokerId; }
+    inline std::string GetUserId() const { return _userId; }
+    inline void SetUserId(std::string userId) { _userId = userId; }
+    inline std::string GetPassword() const { return _password; }
+    inline void SetPassword(std::string password) { _password = password; }
 
 public:
     static boost::python::tuple GetApiVersion();
 
 public:
     // MdApi
+    void MdLogin();
 
 public:
     // MdSpi
 	virtual void OnMdFrontConnected() = 0;
+	virtual void OnMdFrontDisconnected(int nReason) = 0;
+	virtual void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+	virtual void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 
 public:
     // TraderApi
+    void TdLogin();
 
 public:
     // TraderSpi
-	virtual void OnTraderFrontConnected() = 0;
+	virtual void OnTdFrontConnected() = 0;
+    virtual void OnTdFrontDisconnected(int nReason) = 0;
+	virtual void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+	virtual void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 
 };

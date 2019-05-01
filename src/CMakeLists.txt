@@ -15,7 +15,7 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-add_library(_ctpclient SHARED ctpclient.cc mdspi.cc traderspi.cc)
+add_library(_ctpclient SHARED ctpclient.cc mdspi.cc traderspi.cc binding.cc)
 target_link_libraries(_ctpclient ${BOOST_LIBS} ${PYTHON_LIBS} ${CTP_LIBS})
 set_target_properties(_ctpclient PROPERTIES PREFIX "")
 install(TARGETS _ctpclient DESTINATION "${CMAKE_SOURCE_DIR}/lib")

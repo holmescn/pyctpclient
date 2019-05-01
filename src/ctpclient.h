@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 #pragma once
+#include <boost/python.hpp>
 #include <boost/python/tuple.hpp>
-#include "mdspi.h"
-#include "traderspi.h"
+#include "ThostFtdcUserApiStruct.h"
+
+class MdSpi;
+class TraderSpi;
+class CThostFtdcMdApi;
+class CThostFtdcTraderApi;
 
 class CtpClient
 {
@@ -39,6 +44,7 @@ public:
     virtual ~CtpClient();
 
     void Run();
+
 public:
     // Getter/Setter
     inline std::string GetFlowPath() const { return _flowPath; }
@@ -78,5 +84,24 @@ public:
     virtual void OnTdFrontDisconnected(int nReason) = 0;
 	virtual void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 	virtual void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+
+};
+
+
+class CtpClientWrap : public CtpClient, public boost::python::wrapper<CtpClient>
+{
+public:
+	CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
+	~CtpClientWrap();
+
+	void OnMdFrontConnected() override;
+	void OnMdFrontDisconnected(int nReason) override;
+	void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+
+	void OnTdFrontConnected() override;
+	void OnTdFrontDisconnected(int nReason) override;
+	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 
 };

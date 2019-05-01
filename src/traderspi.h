@@ -16,7 +16,6 @@
 #pragma once
 #include "ThostFtdcTraderApi.h"
 #include "ThostFtdcUserApiStruct.h"
-#include "ThostFtdcUserApiDataType.h"
 
 class CtpClient;
 class TraderSpi : public CThostFtdcTraderSpi

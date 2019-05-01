@@ -15,11 +15,15 @@
  */
 #include <sstream>
 #include <iostream>
-#include <boost/python.hpp>
-#include <boost/python/list.hpp>
-#include <boost/python/extract.hpp>
 #include <boost/filesystem.hpp>
-
+#include <boost/python/list.hpp>
+#include <boost/python/dict.hpp>
+#include <boost/python/tuple.hpp>
+#include "ThostFtdcMdApi.h"
+#include "ThostFtdcTraderApi.h"
+#include "ThostFtdcUserApiDataType.h"
+#include "mdspi.h"
+#include "traderspi.h"
 #include "ctpclient.h"
 
 using namespace boost::python;
@@ -55,6 +59,9 @@ void _assertRequest(const char* file, int line, int rcRequest, const char *reque
 	}
 }
 
+////
+// General functions
+////
 CtpClient::CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
 : _mdAddr(mdAddr), _tdAddr(tdAddr), _brokerId(brokerId), _userId(userId), _password(password)
 {
@@ -78,7 +85,6 @@ tuple CtpClient::GetApiVersion()
 	std::string v2 = CThostFtdcTraderApi::GetApiVersion();
 	return boost::python::make_tuple(v1, v2);
 }
-
 
 void CtpClient::Run()
 {
@@ -129,6 +135,20 @@ void CtpClient::Run()
 	_tdApi->Join();
 }
 
+CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
+: CtpClient(mdAddr, tdAddr, brokerId, userId, password)
+{
+	//
+}
+
+CtpClientWrap::~CtpClientWrap()
+{
+	//
+}
+
+////
+// Market Data API
+////
 void CtpClient::MdLogin()
 {
 	CThostFtdcReqUserLoginField req;
@@ -141,6 +161,9 @@ void CtpClient::MdLogin()
 	assert_request(_mdApi->ReqUserLogin(&req, 0));
 }
 
+////
+// Trader API
+////
 void CtpClient::TdLogin()
 {
 	CThostFtdcReqUserLoginField req;
@@ -153,116 +176,84 @@ void CtpClient::TdLogin()
 	assert_request(_tdApi->ReqUserLogin(&req, 0));
 }
 
-class CtpClientWrap : public CtpClient, public boost::python::wrapper<CtpClient>
+
+////
+// Market Data SPI
+////
+void CtpClientWrap::OnMdFrontConnected()
 {
-public:
-	CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
-	: CtpClient(mdAddr, tdAddr, brokerId, userId, password)
-	{
-		//
+	if (override fn = get_override("on_md_front_connected")) {
+		fn();
+	} else {
+		std::cerr << "Market Data Front Connected" << std::endl;
+		MdLogin();
 	}
+}
 
-	~CtpClientWrap()
-	{
-		//
-	}
-
-	void OnMdFrontConnected() override
-	{
-		if (override fn = this->get_override("on_md_front_connected")) {
-			fn();
-		} else {
-			std::cerr << "Market Data Front Connected" << std::endl;
-			MdLogin();
-		}
-	}
-
-	void OnMdFrontDisconnected(int nReason) override
-	{
-		if (override fn = this->get_override("on_md_front_disconnected")) {
-			fn();
-		} else {
-			std::cerr << "Market Data Front Disconnected with reason = " << nReason << std::endl;
-		}
-	}
-
-	void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override
-	{
-		if (override fn = this->get_override("on_md_user_login")) {
-			fn();
-		} else {
-			std::cerr << "Market Data User Login" << std::endl;
-		}
-	}
-
-	void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override
-	{
-		if (override fn = this->get_override("on_md_user_logout")) {
-			fn();
-		} else {
-			std::cerr << "Market Data User Logout" << std::endl;
-		}
-	}
-
-	void OnTdFrontConnected() override
-	{
-		std::cerr << "Trader Front Connected" << std::endl;
-
-		if (override fn = this->get_override("on_td_front_connected")) {
-			fn();
-		} else {
-			TdLogin();
-		}
-	}
-
-	void OnTdFrontDisconnected(int nReason) override
-	{
-		if (override fn = this->get_override("on_md_front_disconnected")) {
-			fn();
-		} else {
-			std::cerr << "Trader Front Disconnected with reason = " << nReason << std::endl;
-		}
-	}
-
-	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override
-	{
-		if (override fn = this->get_override("on_md_user_login")) {
-			fn();
-		} else {
-			std::cerr << "Trader User Login" << std::endl;
-		}
-	}
-
-	void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override
-	{
-		if (override fn = this->get_override("on_md_user_logout")) {
-			fn();
-		} else {
-			std::cerr << "Trader User Logout" << std::endl;
-		}
-	}
-
-};
-
-BOOST_PYTHON_MODULE(_ctpclient)
+void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 {
-	class_<CtpClientWrap, boost::noncopyable>("CtpClient", init<std::string, std::string, std::string, std::string, std::string>())
-	 	.add_property("flow_path", &CtpClient::GetFlowPath, &CtpClient::SetFlowPath)
-	 	.add_property("md_address", &CtpClient::GetMdAddr, &CtpClient::SetMdAddr)
-	 	.add_property("td_address", &CtpClient::GetTdAddr, &CtpClient::SetTdAddr)
-	 	.add_property("broker_id", &CtpClient::GetBrokerId, &CtpClient::SetBrokerId)
-	 	.add_property("user_id", &CtpClient::GetUserId, &CtpClient::SetUserId)
-		.def("get_api_version", &CtpClient::GetApiVersion)
-        .staticmethod("get_api_version")
-		.def("run", &CtpClient::Run)
+	if (override fn = get_override("on_md_front_disconnected")) {
+		fn();
+	} else {
+		std::cerr << "Market Data Front Disconnected with reason = " << nReason << std::endl;
+	}
+}
 
-    	.def("md_login", &CtpClient::MdLogin)
-		.def("on_md_front_connected", pure_virtual(&CtpClient::OnMdFrontConnected))
-    	.def("on_md_front_disconnected", pure_virtual(&CtpClient::OnMdFrontDisconnected))
-    	.def("on_md_user_login", pure_virtual(&CtpClient::OnMdUserLogin))
-    	.def("on_md_user_logout", pure_virtual(&CtpClient::OnMdUserLogout))
+void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	if (override fn = get_override("on_md_user_login")) {
+		fn();
+	} else {
+		std::cerr << "Market Data User Login" << std::endl;
+	}
+}
 
-    	.def("td_login", &CtpClient::TdLogin)
-    	.def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
-    	;
-};
+void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	if (override fn = get_override("on_md_user_logout")) {
+		fn();
+	} else {
+		std::cerr << "Market Data User Logout" << std::endl;
+	}
+}
+
+////
+// Trader SPI
+////
+void CtpClientWrap::OnTdFrontConnected()
+{
+	std::cerr << "Trader Front Connected" << std::endl;
+
+	if (override fn = get_override("on_td_front_connected")) {
+		fn();
+	} else {
+		TdLogin();
+	}
+}
+
+void CtpClientWrap::OnTdFrontDisconnected(int nReason)
+{
+	if (override fn = get_override("on_md_front_disconnected")) {
+		fn();
+	} else {
+		std::cerr << "Trader Front Disconnected with reason = " << nReason << std::endl;
+	}
+}
+
+void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	if (override fn = get_override("on_md_user_login")) {
+		fn();
+	} else {
+		std::cerr << "Trader User Login" << std::endl;
+	}
+}
+
+void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	if (override fn = get_override("on_md_user_logout")) {
+		fn();
+	} else {
+		std::cerr << "Trader User Logout" << std::endl;
+	}
+}

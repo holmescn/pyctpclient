@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "mdspi.h"
 #include "ctpclient.h"
 
 MdSpi::MdSpi(CtpClient *client) : _client(client)

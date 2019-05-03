@@ -58,12 +58,32 @@ void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField 
 
 void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-
+    _client->OnRspOrderInsert(pInputOrder, pRspInfo);
 }
 
 void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+    _client->OnRspOrderAction(pInputOrderAction, pRspInfo);
+}
 
+void TraderSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+{
+    _client->OnErrRtnOrderInsert(pInputOrder, pRspInfo);
+}
+
+void TraderSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+{
+    _client->OnErrRtnOrderAction(pOrderAction, pRspInfo);
+}
+
+void TraderSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
+{
+    _client->OnRtnOrder(pOrder);
+}
+
+void TraderSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
+{
+    _client->OnRtnTrade(pTrade);
 }
 
 void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -99,4 +119,9 @@ void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMa
 void TraderSpi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     _client->OnRspQrySettlementInfo(pSettlementInfo, pRspInfo);
+}
+
+void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnRspQryInvestorPositionDetail(pInvestorPositionDetail, pRspInfo, bIsLast);
 }

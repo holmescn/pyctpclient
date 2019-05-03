@@ -356,6 +356,19 @@ void CtpClient::QueryInvestorPosition()
 	assert_request(_tdApi->QueryInvestorPosition(&req, 0));
 }
 
+void CtpClient::QueryInvestorPositionDetail()
+{
+	CThostFtdcQryInvestorPositionDetailField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InstrumentID, _userId.c_str(), sizeof req.InvestorID);
+
+	// 不填写合约则返回所有持仓
+	strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
+
+	assert_request(_tdApi->ReqQryInvestorPositionDetail(&req, 0));
+}
+
 void CtpClient::QueryMarketData(std::string instrumentId)
 {
 	CThostFtdcQryDepthMarketDataField req;
@@ -429,6 +442,48 @@ void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmFi
 	}
 }
 
+void CtpClientWrap::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_rsp_order_insert")) {
+		fn(pInputOrder, pRspInfo);
+	}
+}
+
+void CtpClientWrap::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_rsp_order_action")) {
+		fn(pInputOrderAction, pRspInfo);
+	}
+}
+
+void CtpClientWrap::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_err_order_insert")) {
+		fn(pInputOrder, pRspInfo);
+	}
+}
+
+void CtpClientWrap::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_err_order_action")) {
+		fn(pOrderAction, pRspInfo);
+	}
+}
+
+void CtpClientWrap::OnRtnOrder(CThostFtdcOrderField *pOrder)
+{
+	if (override fn = get_override("on_rtn_order")) {
+		fn(pOrder);
+	}
+}
+
+void CtpClientWrap::OnRtnTrade(CThostFtdcTradeField *pTrade)
+{
+	if (override fn = get_override("on_rtn_trade")) {
+		fn(pTrade);
+	}
+}
+
 void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
 	if (override fn = get_override("on_td_error")) {
@@ -463,6 +518,13 @@ void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pI
 {
 	if (override fn = get_override("on_rsp_investor_position")) {
 		fn(pInvestorPosition, pRspInfo, bIsLast);
+	}
+}
+
+void CtpClientWrap::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+{
+	if (override fn = get_override("on_rsp_investor_position_detail")) {
+		fn(pInvestorPositionDetail, pRspInfo, bIsLast);
 	}
 }
 

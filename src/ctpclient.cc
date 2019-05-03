@@ -304,6 +304,25 @@ void CtpClient::TdLogin()
 	assert_request(_tdApi->ReqUserLogin(&req, 0));
 }
 
+void CtpClient::ConfirmSettlementInfo()
+{
+	CThostFtdcSettlementInfoConfirmField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+
+	assert_request(_tdApi->ConfirmSettlementInfo(&req, 0));
+}
+
+void CtpClient::QueryOrder()
+{
+	CThostFtdcQryOrderField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+	assert_request(_tdApi->ReqQryOrder(&req, 0));
+}
+
 #pragma endregion // Trader API
 
 
@@ -335,6 +354,7 @@ void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CT
 		fn(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
 	} else {
 		std::cerr << "Trader User Login" << std::endl;
+		ConfirmSettlementInfo();
 	}
 }
 
@@ -347,12 +367,28 @@ void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThos
 	}
 }
 
+void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_settlement_info_confirm")) {
+		fn(pSettlementInfoConfirm, pRspInfo);
+	} else {
+		std::cerr << "SettlementInfoConfirm: " << pRspInfo->ErrorID << std::endl;
+	}
+}
+
 void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
 	if (override fn = get_override("on_td_error")) {
 		fn(pRspInfo, nRequestID, bIsLast);
 	} else {
 		std::cerr << "Trader Error: " << pRspInfo->ErrorID << std::endl;
+	}
+}
+
+void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+{
+	if (override fn = get_override("on_rsp_order")) {
+		fn(pOrder, pRspInfo, bIsLast);
 	}
 }
 

@@ -36,6 +36,11 @@ void TraderSpi::OnFrontDisconnected(int nReason)
     _client->OnTdFrontDisconnected(nReason);
 }
 
+void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+
+}
+
 void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     _client->OnTdUserLogin(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
@@ -46,7 +51,27 @@ void TraderSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFt
     _client->OnTdUserLogout(pUserLogout, pRspInfo, nRequestID, bIsLast);
 }
 
+void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnRspSettlementInfoConfirm(pSettlementInfoConfirm, pRspInfo);
+}
+
+void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+
+}
+
+void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+
+}
+
 void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     _client->OnTdError(pRspInfo, nRequestID, bIsLast);
+}
+
+void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnRspQryOrder(pOrder, pRspInfo, bIsLast);    
 }

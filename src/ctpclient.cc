@@ -222,6 +222,9 @@ void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CT
 		fn(pRspUserLogin, pRspInfo);
 	} else {
 		std::cerr << "Market Data User Login" << std::endl;
+		if (len(_instrumentIds) > 0) {
+			SubscribeMarketData(_instrumentIds);
+		}
 	}
 }
 

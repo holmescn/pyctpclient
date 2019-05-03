@@ -47,6 +47,7 @@ struct UnknownRequestException
 
 class CtpClient
 {
+protected:
     MdSpi *_mdSpi = nullptr;
     CThostFtdcMdApi *_mdApi = nullptr;
     TraderSpi *_tdSpi = nullptr;
@@ -57,6 +58,8 @@ class CtpClient
     std::string _brokerId;
     std::string _userId;
     std::string _password;
+    boost::python::list _instrumentIds;
+
 public:
     CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
     CtpClient(const CtpClient&) = delete;
@@ -81,6 +84,8 @@ public:
     inline void SetUserId(std::string userId) { _userId = userId; }
     inline std::string GetPassword() const { return _password; }
     inline void SetPassword(std::string password) { _password = password; }
+    inline boost::python::list GetInstrumentIds() const { return _instrumentIds; }
+    inline void SetInstrumentIds(boost::python::list instrumentIds) { _instrumentIds = instrumentIds; }
 
 public:
     static boost::python::tuple GetApiVersion();

@@ -75,3 +75,8 @@ void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFie
 {
     _client->OnRspQryOrder(pOrder, pRspInfo, bIsLast);    
 }
+
+void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnRspQryTradingAccount(pTradingAccount, pRspInfo, bIsLast);   
+}

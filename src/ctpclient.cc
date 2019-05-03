@@ -323,6 +323,17 @@ void CtpClient::QueryOrder()
 	assert_request(_tdApi->ReqQryOrder(&req, 0));
 }
 
+void CtpClient::QueryTradingAccount()
+{
+	CThostFtdcQryTradingAccountField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+	strncpy(req.CurrencyID, "CNY", sizeof req.CurrencyID);
+
+	assert_request(_tdApi->QueryTradingAccount(&req, 0));
+}
+
 #pragma endregion // Trader API
 
 
@@ -389,6 +400,13 @@ void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInf
 {
 	if (override fn = get_override("on_rsp_order")) {
 		fn(pOrder, pRspInfo, bIsLast);
+	}
+}
+
+void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+{
+	if (override fn = get_override("on_rsp_trading_account")) {
+		fn(pTradingAccount, pRspInfo, bIsLast);
 	}
 }
 

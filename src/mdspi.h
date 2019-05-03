@@ -25,6 +25,13 @@ class MdSpi : public CThostFtdcMdSpi
 {
     CtpClient *_client;
 	struct M1Bar {
+		M1Bar() = default;
+		M1Bar(const M1Bar&) = default;
+		M1Bar(M1Bar&&) = default;
+		M1Bar& operator=(const M1Bar&) = default;
+		M1Bar& operator=(M1Bar&&) = default;
+		~M1Bar() = default;
+
 		std::string time;
 		float priceOpen, priceHigh, priceLow, priceClose;
 		int volume;

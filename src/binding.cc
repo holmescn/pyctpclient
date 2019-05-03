@@ -95,11 +95,15 @@ BOOST_PYTHON_MODULE(_ctpclient)
 		.def("query_order", &CtpClient::QueryOrder)
 		.def("query_trading_account", &CtpClient::QueryTradingAccount)
 		.def("query_investor_position", &CtpClient::QueryInvestorPosition)
+		.def("query_market_dara", &CtpClient::QueryMarketData)
+		.def("query_settlement_info", &CtpClient::QuerySettlementInfo)
 		.def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
 		.def("on_settlement_info_confirm", pure_virtual(&CtpClient::OnRspSettlementInfoConfirm))
 		.def("on_rsp_order", pure_virtual(&CtpClient::OnRspQryOrder))
 		.def("on_rsp_trading_account", pure_virtual(&CtpClient::OnRspQryTradingAccount))
 		.def("on_rsp_investor_position", pure_virtual(&CtpClient::OnRspQryInvestorPosition))
+		.def("on_rsp_market_data", pure_virtual(&CtpClient::OnRspQryDepthMarketData))
+		.def("on_rsp_settlement_info", pure_virtual(&CtpClient::OnRspQrySettlementInfo))
 		;
 
 	class_<CThostFtdcRspInfoField>("ResponseInfo")
@@ -346,7 +350,17 @@ BOOST_PYTHON_MODULE(_ctpclient)
 		.def_readonly("exchange_id", &CThostFtdcInvestorPositionField::ExchangeID)
 		.def_readonly("yd_strike_frozen", &CThostFtdcInvestorPositionField::YdStrikeFrozen)
 		.def_readonly("invest_unit_id", &CThostFtdcInvestorPositionField::InvestUnitID)
-	;
+	  ;
 
+	class_<CThostFtdcSettlementInfoField>("SettlementInfo")
+		.def_readonly("trading_day", &CThostFtdcSettlementInfoField::TradingDay)
+		.def_readonly("settlement_id", &CThostFtdcSettlementInfoField::SettlementID)
+		.def_readonly("broker_id", &CThostFtdcSettlementInfoField::BrokerID)
+		.def_readonly("investor_id", &CThostFtdcSettlementInfoField::InvestorID)
+		.def_readonly("sequence_no", &CThostFtdcSettlementInfoField::SequenceNo)
+		.def_readonly("content", &CThostFtdcSettlementInfoField::Content)
+		.def_readonly("account_id", &CThostFtdcSettlementInfoField::AccountID)
+		.def_readonly("currency_id", &CThostFtdcSettlementInfoField::CurrencyID)
+		;
 
 };

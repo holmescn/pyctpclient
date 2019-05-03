@@ -323,6 +323,15 @@ void CtpClient::QueryOrder()
 	assert_request(_tdApi->ReqQryOrder(&req, 0));
 }
 
+void CtpClient::QueryTrade()
+{
+	CThostFtdcQryTradeField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+	assert_request(_tdApi->ReqQryTrade(&req, 0));
+}
+
 void CtpClient::QueryTradingAccount()
 {
 	CThostFtdcQryTradingAccountField req;
@@ -345,6 +354,26 @@ void CtpClient::QueryInvestorPosition()
 	strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
 
 	assert_request(_tdApi->QueryInvestorPosition(&req, 0));
+}
+
+void CtpClient::QueryMarketData(std::string instrumentId)
+{
+	CThostFtdcQryDepthMarketDataField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
+
+	assert_request(_tdApi->ReqQryDepthMarketData(&req, 0));
+}
+
+void CtpClient::QuerySettlementInfo()
+{
+	CThostFtdcQrySettlementInfoField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+	strncpy(req.CurrencyID, "CNY", sizeof req.CurrencyID);
+
+	assert_request(_tdApi->QuerySettlementInfo(&req, 0));
 }
 
 #pragma endregion // Trader API
@@ -416,6 +445,13 @@ void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInf
 	}
 }
 
+void CtpClientWrap::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+{
+	if (override fn = get_override("on_rsp_trade")) {
+		fn(pTrade, pRspInfo, bIsLast);
+	}
+}
+
 void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_trading_account")) {
@@ -427,6 +463,20 @@ void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pI
 {
 	if (override fn = get_override("on_rsp_investor_position")) {
 		fn(pInvestorPosition, pRspInfo, bIsLast);
+	}
+}
+
+void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+{
+	if (override fn = get_override("on_rsp_market_data")) {
+		fn(pDepthMarketData, pRspInfo, bIsLast);
+	}
+}
+
+void CtpClientWrap::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_rsp_settlement_info")) {
+		fn(pSettlementInfo, pRspInfo);
 	}
 }
 

@@ -38,10 +38,53 @@ void MdSpi::OnFrontDisconnected(int nReason)
 
 void MdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnMdUserLogin(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
+    _client->OnMdUserLogin(pRspUserLogin, pRspInfo);
 }
 
 void MdSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnMdUserLogout(pUserLogout, pRspInfo, nRequestID, bIsLast);
+    _client->OnMdUserLogout(pUserLogout, pRspInfo);
+}
+
+void MdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnSubscribeMarketData(pSpecificInstrument, pRspInfo);
+}
+
+void MdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnUnsubscribeMarketData(pSpecificInstrument, pRspInfo);
+}
+
+void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
+{
+    char tickTime[16] = { 0 };
+    snprintf(tickTime, sizeof tickTime, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
+
+    M1Bar bar;
+    bar.time = std::string(pDepthMarketData->UpdateTime, pDepthMarketData->UpdateTime+6);;
+
+    auto instrumentId = pDepthMarketData->InstrumentID;
+    auto price = pDepthMarketData->LastPrice;
+    auto volume = pDepthMarketData->Volume;
+    bar.volume = volume;
+
+    auto iter = _m1Bars.find(instrumentId);
+    if (iter == _m1Bars.end() || iter->second.time != bar.time) {
+        bar.priceOpen = bar.priceHigh = bar.priceLow = bar.priceClose = price;
+    } else {
+        bar.priceHigh = price > iter->second.priceHigh ? price : iter->second.priceHigh;
+        bar.priceLow = price < iter->second.priceLow ? price : iter->second.priceLow;
+        bar.priceClose = price;
+    }
+    _m1Bars[pDepthMarketData->InstrumentID] = bar;
+
+    _client->OnRtnMarketData(pDepthMarketData);
+    _client->OnTick(instrumentId, price, volume, tickTime);
+    _client->On1Min(instrumentId, bar.priceOpen, bar.priceHigh, bar.priceLow, bar.priceClose, bar.volume, bar.time);
+}
+
+void MdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnMdError(pRspInfo, nRequestID, bIsLast);
 }

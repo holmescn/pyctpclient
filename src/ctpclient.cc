@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstring>
+#include <chrono>
+#include <thread>
 #include <sstream>
 #include <iostream>
 #include <boost/filesystem.hpp>
-#include <boost/python/list.hpp>
-#include <boost/python/dict.hpp>
-#include <boost/python/tuple.hpp>
 #include "ThostFtdcMdApi.h"
 #include "ThostFtdcTraderApi.h"
 #include "ThostFtdcUserApiDataType.h"
@@ -28,40 +28,31 @@
 
 using namespace boost::python;
 
-#define assert_request(request) _assertRequest(__FILE__, __LINE__, (request), #request)
+#define assert_request(request) _assertRequest((request), #request)
 
-void _assertRequest(const char* file, int line, int rcRequest, const char *request)
+void _assertRequest(int rc, const char *request)
 {
-	std::stringstream ss;
-	switch (rcRequest) {
+	switch (rc) {
 	case 0:
 		// 发送成功
 		break;
 	case -1:
 		// 因网络原因发送失败
-		ss << "Request " << request
-			<< " failed because of network." << std::endl;
-		throw std::runtime_error(ss.str());
+		throw RequestNetworkException{request};
 	case -2:
 		// 未处理请求队列总数量超限
-		ss << "Request " << request
-			<< " failed because of request queue is full." << std::endl;
-		throw std::runtime_error(ss.str());
+		throw FullRequestQueueException{request};
 	case -3:
 		// 每秒发送请求数量超限
-		ss << "Request " << request
-			<< " failed because of request too frequently." << std::endl;
-		throw std::runtime_error(ss.str());
+		throw RequestTooFrequentlyException{request};
 	default:
-		ss << "Request " << request
-			<< " failed because of unhandled error - " << rcRequest << std::endl;
-		throw std::runtime_error(ss.str());
+		throw UnknownRequestException{rc, request};
 	}
 }
 
-////
-// General functions
-////
+
+#pragma region General functions
+
 CtpClient::CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
 : _mdAddr(mdAddr), _tdAddr(tdAddr), _brokerId(brokerId), _userId(userId), _password(password)
 {
@@ -93,8 +84,10 @@ void CtpClient::Run()
 	std::string mdFlowPath, tdFlowPath;
 	if (_flowPath == "") {
 		auto tmpPath = temp_directory_path();
-		auto mdPath = tmpPath / "md";
-		auto tdPath = tmpPath / "td";
+		auto rootPath = tmpPath / "ctp/";
+		auto mdPath = rootPath / "md/";
+		auto tdPath = rootPath / "td/";
+		create_directory(rootPath);
 		create_directory(mdPath);
 		create_directory(tdPath);
 
@@ -105,11 +98,11 @@ void CtpClient::Run()
 		if (!exists(p)) {
 			create_directory(p);
 		}
-		auto mdPath = p / "md";
+		auto mdPath = p / "md/";
 		if (!exists(mdPath)) {
 			create_directory(mdPath);
 		}
-		auto tdPath = p / "td";
+		auto tdPath = p / "td/";
 		if (!exists(tdPath)) {
 			create_directory(tdPath);
 		}
@@ -122,17 +115,17 @@ void CtpClient::Run()
 	_mdSpi = new MdSpi(this);
 	_mdApi->RegisterSpi(_mdSpi);
 	_mdApi->RegisterFront(const_cast<char*>(_mdAddr.c_str()));
-
-	_tdApi = CThostFtdcTraderApi::CreateFtdcTraderApi(tdFlowPath.c_str());
-	_tdSpi = new TraderSpi(this);
-	_tdApi->RegisterSpi(_tdSpi);
-	_tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
-
 	_mdApi->Init();
-	_tdApi->Init();
 
-	_mdApi->Join();
-	_tdApi->Join();
+	// _tdApi = CThostFtdcTraderApi::CreateFtdcTraderApi(tdFlowPath.c_str());
+	// _tdSpi = new TraderSpi(this);
+	// _tdApi->RegisterSpi(_tdSpi);
+	// _tdApi->SubscribePrivateTopic(THOST_TERT_QUICK);
+	// _tdApi->SubscribePublicTopic(THOST_TERT_QUICK);
+	// _tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
+	// _tdApi->Init();
+
+	std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
 CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
@@ -146,9 +139,11 @@ CtpClientWrap::~CtpClientWrap()
 	//
 }
 
-////
-// Market Data API
-////
+#pragma endregion
+
+
+#pragma region Market Data API
+
 void CtpClient::MdLogin()
 {
 	CThostFtdcReqUserLoginField req;
@@ -161,25 +156,47 @@ void CtpClient::MdLogin()
 	assert_request(_mdApi->ReqUserLogin(&req, 0));
 }
 
-////
-// Trader API
-////
-void CtpClient::TdLogin()
+void CtpClient::SubscribeMarketData(boost::python::list instrumentIds)
 {
-	CThostFtdcReqUserLoginField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
-	strncpy(req.UserID, _userId.c_str(), sizeof req.UserID);
-	strncpy(req.Password, _password.c_str(), sizeof req.Password);
-	// strncpy(req.UserProductInfo, _userProductInfo.c_str(), sizeof req.UserProductInfo);
+	size_t N = len(instrumentIds);
+	char **ppInstrumentIDs = new char*[N];
+	for (size_t i = 0; i < N; i++) {
+		std::string instrumentId = extract<std::string>(instrumentIds[i]);
+		ppInstrumentIDs[i] = new char[instrumentId.size()+1];
+		memcpy(ppInstrumentIDs[i], instrumentId.data(), instrumentId.size()+1);
+	}
 
-	assert_request(_tdApi->ReqUserLogin(&req, 0));
+	_mdApi->SubscribeMarketData(ppInstrumentIDs, N);
+
+	for (size_t i = 0; i < N; i++) {
+		delete[] ppInstrumentIDs[i];
+	}
+	delete[] ppInstrumentIDs;
 }
 
+void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
+{
+	size_t N = len(instrumentIds);
+	char **ppInstrumentIDs = new char*[N];
+	for (size_t i = 0; i < N; i++) {
+		std::string instrumentId = extract<std::string>(instrumentIds[i]);
+		ppInstrumentIDs[i] = new char[instrumentId.size()+1];
+		memcpy(ppInstrumentIDs[i], instrumentId.data(), instrumentId.size()+1);
+	}
 
-////
-// Market Data SPI
-////
+	_mdApi->UnSubscribeMarketData(ppInstrumentIDs, N);
+
+	for (size_t i = 0; i < N; i++) {
+		delete[] ppInstrumentIDs[i];
+	}
+	delete[] ppInstrumentIDs;
+}
+
+#pragma endregion // Market Data API
+
+
+#pragma region Market Data SPI
+
 void CtpClientWrap::OnMdFrontConnected()
 {
 	if (override fn = get_override("on_md_front_connected")) {
@@ -193,33 +210,102 @@ void CtpClientWrap::OnMdFrontConnected()
 void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 {
 	if (override fn = get_override("on_md_front_disconnected")) {
-		fn();
+		fn(nReason);
 	} else {
 		std::cerr << "Market Data Front Disconnected with reason = " << nReason << std::endl;
 	}
 }
 
-void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_md_user_login")) {
-		fn();
+		fn(pRspUserLogin, pRspInfo);
 	} else {
 		std::cerr << "Market Data User Login" << std::endl;
 	}
 }
 
-void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_md_user_logout")) {
-		fn();
+		fn(pUserLogout, pRspInfo);
 	} else {
 		std::cerr << "Market Data User Logout" << std::endl;
 	}
 }
 
-////
-// Trader SPI
-////
+void CtpClientWrap::OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_subscribe_market_data")) {
+		fn(pSpecificInstrument, pRspInfo);
+	} else {
+		std::cerr << "Market Data subscribed " << pSpecificInstrument->InstrumentID << std::endl;
+	}
+}
+
+void CtpClientWrap::OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
+{
+	if (override fn = get_override("on_unsubscribe_market_data")) {
+		fn(pSpecificInstrument, pRspInfo);
+	} else {
+		std::cerr << "Market Data unsubscribed " << pSpecificInstrument->InstrumentID << std::endl;
+	}
+}
+
+void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
+{
+	if (override fn = get_override("on_rtn_market_data")) {
+		fn(pDepthMarketData);
+	} else {
+		std::cerr << "Market Data User Logout" << std::endl;
+	}
+}
+
+void CtpClientWrap::OnTick(std::string instrumentId, float price, int volume, std::string time)
+{
+	if (override fn = get_override("on_tick")) {
+		fn(instrumentId, price, volume, time);
+	}
+}
+
+void CtpClientWrap::On1Min(std::string instrumentId, float priceOpen, float priceHigh, float priceLow, float priceClose, int volume, std::string time)
+{
+	if (override fn = get_override("on_1min")) {
+		fn(instrumentId, priceOpen, priceHigh, priceLow, priceClose, volume, time);
+	}
+}
+
+void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	if (override fn = get_override("on_md_error")) {
+		fn(pRspInfo, nRequestID, bIsLast);
+	} else {
+		std::cerr << "Market Data Error: " << pRspInfo->ErrorID << std::endl;
+	}
+}
+
+#pragma endregion // Market Data SPI
+
+
+#pragma region Trader API
+
+void CtpClient::TdLogin()
+{
+	CThostFtdcReqUserLoginField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.UserID, _userId.c_str(), sizeof req.UserID);
+	strncpy(req.Password, _password.c_str(), sizeof req.Password);
+	// strncpy(req.UserProductInfo, _userProductInfo.c_str(), sizeof req.UserProductInfo);
+
+	assert_request(_tdApi->ReqUserLogin(&req, 0));
+}
+
+#pragma endregion // Trader API
+
+
+#pragma region Trader SPI
+
 void CtpClientWrap::OnTdFrontConnected()
 {
 	std::cerr << "Trader Front Connected" << std::endl;
@@ -234,7 +320,7 @@ void CtpClientWrap::OnTdFrontConnected()
 void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 {
 	if (override fn = get_override("on_md_front_disconnected")) {
-		fn();
+		fn(nReason);
 	} else {
 		std::cerr << "Trader Front Disconnected with reason = " << nReason << std::endl;
 	}
@@ -242,8 +328,8 @@ void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 
 void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	if (override fn = get_override("on_md_user_login")) {
-		fn();
+	if (override fn = get_override("on_td_user_login")) {
+		fn(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
 	} else {
 		std::cerr << "Trader User Login" << std::endl;
 	}
@@ -251,9 +337,20 @@ void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CT
 
 void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	if (override fn = get_override("on_md_user_logout")) {
-		fn();
+	if (override fn = get_override("on_td_user_logout")) {
+		fn(pUserLogout, pRspInfo, nRequestID, bIsLast);
 	} else {
 		std::cerr << "Trader User Logout" << std::endl;
 	}
 }
+
+void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	if (override fn = get_override("on_td_error")) {
+		fn(pRspInfo, nRequestID, bIsLast);
+	} else {
+		std::cerr << "Trader Error: " << pRspInfo->ErrorID << std::endl;
+	}
+}
+
+#pragma endregion // Trader SPI

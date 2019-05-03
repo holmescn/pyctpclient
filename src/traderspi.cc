@@ -18,12 +18,12 @@
 
 TraderSpi::TraderSpi(CtpClient *client) : _client(client)
 {
-
+    //
 }
 
 TraderSpi::~TraderSpi()
 {
-
+    //
 }
 
 void TraderSpi::OnFrontConnected()
@@ -44,4 +44,9 @@ void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThos
 void TraderSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     _client->OnTdUserLogout(pUserLogout, pRspInfo, nRequestID, bIsLast);
+}
+
+void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnTdError(pRspInfo, nRequestID, bIsLast);
 }

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #pragma once
+#include <map>
+#include <string>
 #include "ThostFtdcMdApi.h"
 #include "ThostFtdcUserApiStruct.h"
 #include "ThostFtdcUserApiDataType.h"
@@ -22,6 +24,13 @@ class CtpClient;
 class MdSpi : public CThostFtdcMdSpi
 {
     CtpClient *_client;
+	struct M1Bar {
+		std::string time;
+		float priceOpen, priceHigh, priceLow, priceClose;
+		int volume;
+	};
+	std::map<std::string, M1Bar> _m1Bars;
+
 public:
     MdSpi(CtpClient *client);
     MdSpi(const MdSpi&) = delete;
@@ -35,5 +44,9 @@ public:
 	void OnFrontDisconnected(int nReason) override;
 	void OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 	void OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) override;
+	void OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 
 };

@@ -15,13 +15,35 @@
  */
 #pragma once
 #include <boost/python.hpp>
-#include <boost/python/tuple.hpp>
 #include "ThostFtdcUserApiStruct.h"
 
 class MdSpi;
 class TraderSpi;
 class CThostFtdcMdApi;
 class CThostFtdcTraderApi;
+
+#pragma region Exception
+struct RequestNetworkException
+{
+    std::string request;
+};
+
+struct FullRequestQueueException
+{
+    std::string request;
+};
+
+struct RequestTooFrequentlyException
+{
+    std::string request;
+};
+
+struct UnknownRequestException
+{
+    int rc;
+    std::string request;
+};
+#pragma endregion
 
 class CtpClient
 {
@@ -66,13 +88,21 @@ public:
 public:
     // MdApi
     void MdLogin();
+    void SubscribeMarketData(boost::python::list instrumentIds);
+    void UnsubscribeMarketData(boost::python::list instrumentIds);
 
 public:
     // MdSpi
 	virtual void OnMdFrontConnected() = 0;
 	virtual void OnMdFrontDisconnected(int nReason) = 0;
-	virtual void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
-	virtual void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+	virtual void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) = 0;
+    virtual void OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
+    virtual void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
+    virtual void OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) = 0;
+    virtual void OnTick(std::string instrumentId, float price, int volume, std::string time) = 0;
+    virtual void On1Min(std::string instrumentId, float priceOpen, float priceHigh, float priceLow, float priceClose, int volume, std::string time) = 0;
+	virtual void OnMdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 
 public:
     // TraderApi
@@ -84,6 +114,7 @@ public:
     virtual void OnTdFrontDisconnected(int nReason) = 0;
 	virtual void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 	virtual void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+	virtual void OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 
 };
 
@@ -96,12 +127,19 @@ public:
 
 	void OnMdFrontConnected() override;
 	void OnMdFrontDisconnected(int nReason) override;
-	void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
-	void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) override;
+	void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) override;
+    void OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;
+    void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;
+    void OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) override;
+    void OnTick(std::string instrumentId, float price, int volume, std::string time) override;
+    void On1Min(std::string instrumentId, float priceOpen, float priceHigh, float priceLow, float priceClose, int volume, std::string time) override;
+	void OnMdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
 	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 	void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 
 };

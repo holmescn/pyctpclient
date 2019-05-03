@@ -80,3 +80,8 @@ void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAc
 {
     _client->OnRspQryTradingAccount(pTradingAccount, pRspInfo, bIsLast);   
 }
+
+void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->OnRspQryInvestorPosition(pInvestorPosition, pRspInfo, bIsLast);
+}

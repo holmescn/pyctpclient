@@ -334,6 +334,19 @@ void CtpClient::QueryTradingAccount()
 	assert_request(_tdApi->QueryTradingAccount(&req, 0));
 }
 
+void CtpClient::QueryInvestorPosition()
+{
+	CThostFtdcQryInvestorPositionField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InstrumentID, _userId.c_str(), sizeof req.InvestorID);
+
+	// 不填写合约则返回所有持仓
+	strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
+
+	assert_request(_tdApi->QueryInvestorPosition(&req, 0));
+}
+
 #pragma endregion // Trader API
 
 
@@ -407,6 +420,13 @@ void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradi
 {
 	if (override fn = get_override("on_rsp_trading_account")) {
 		fn(pTradingAccount, pRspInfo, bIsLast);
+	}
+}
+
+void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+{
+	if (override fn = get_override("on_rsp_investor_position")) {
+		fn(pInvestorPosition, pRspInfo, bIsLast);
 	}
 }
 

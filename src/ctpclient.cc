@@ -16,7 +16,7 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
-#include <sstream>
+#include <string>
 #include <iostream>
 #include <boost/filesystem.hpp>
 #include "ThostFtdcMdApi.h"
@@ -50,7 +50,6 @@ void _assertRequest(int rc, const char *request)
 	}
 }
 
-
 #pragma region General functions
 
 CtpClient::CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
@@ -81,51 +80,41 @@ void CtpClient::Run()
 {
 	using namespace boost::filesystem;
 
-	std::string mdFlowPath, tdFlowPath;
 	if (_flowPath == "") {
-		auto tmpPath = temp_directory_path();
-		auto rootPath = tmpPath / "ctp/";
-		auto mdPath = rootPath / "md/";
-		auto tdPath = rootPath / "td/";
-		create_directory(rootPath);
-		create_directory(mdPath);
-		create_directory(tdPath);
-
-		mdFlowPath = mdPath.string();
-		tdFlowPath = tdPath.string();
-	} else {
-		path p(_flowPath);
-		if (!exists(p)) {
-			create_directory(p);
-		}
-		auto mdPath = p / "md/";
-		if (!exists(mdPath)) {
-			create_directory(mdPath);
-		}
-		auto tdPath = p / "td/";
-		if (!exists(tdPath)) {
-			create_directory(tdPath);
-		}
-
-		mdFlowPath = mdPath.string();
-		tdFlowPath = tdPath.string();
+		auto tmpPath = temp_directory_path() / "ctp";
+		_flowPath = tmpPath.string();
 	}
 
-	_mdApi = CThostFtdcMdApi::CreateFtdcMdApi(mdFlowPath.c_str(), /*using udp*/false, /*multicast*/false);
-	_mdSpi = new MdSpi(this);
-	_mdApi->RegisterSpi(_mdSpi);
-	_mdApi->RegisterFront(const_cast<char*>(_mdAddr.c_str()));
-	_mdApi->Init();
+	auto rootPath = path(_flowPath);
+	auto mdPath = rootPath / "md/";
+	auto tdPath = rootPath / "td/";
+	create_directory(rootPath);
 
-	// _tdApi = CThostFtdcTraderApi::CreateFtdcTraderApi(tdFlowPath.c_str());
-	// _tdSpi = new TraderSpi(this);
-	// _tdApi->RegisterSpi(_tdSpi);
-	// _tdApi->SubscribePrivateTopic(THOST_TERT_QUICK);
-	// _tdApi->SubscribePublicTopic(THOST_TERT_QUICK);
-	// _tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
-	// _tdApi->Init();
+	if (_mdAddr != "") {
+		create_directory(mdPath);
+		auto mdFlowPath = mdPath.string();
 
-	std::this_thread::sleep_for(std::chrono::seconds(5));
+		_mdApi = CThostFtdcMdApi::CreateFtdcMdApi(mdFlowPath.c_str(), /*using udp*/false, /*multicast*/false);
+		_mdSpi = new MdSpi(this);
+		_mdApi->RegisterSpi(_mdSpi);
+		_mdApi->RegisterFront(const_cast<char*>(_mdAddr.c_str()));
+		_mdApi->Init();
+	}
+
+	if (_tdAddr != "") {
+		create_directory(tdPath);
+		auto tdFlowPath = tdPath.string();
+
+		_tdApi = CThostFtdcTraderApi::CreateFtdcTraderApi(tdFlowPath.c_str());
+		_tdSpi = new TraderSpi(this);
+		_tdApi->RegisterSpi(_tdSpi);
+		_tdApi->SubscribePrivateTopic(THOST_TERT_QUICK);
+		_tdApi->SubscribePublicTopic(THOST_TERT_QUICK);
+		_tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
+		_tdApi->Init();
+	}
+
+	std::this_thread::sleep_for(std::chrono::seconds(10));
 }
 
 CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
@@ -387,6 +376,251 @@ void CtpClient::QuerySettlementInfo()
 	strncpy(req.CurrencyID, "CNY", sizeof req.CurrencyID);
 
 	assert_request(_tdApi->QuerySettlementInfo(&req, 0));
+}
+
+void CtpClient::InsertOrder(
+	std::string instrumentId,
+	Direction direction,
+	OffsetFlag offsetFlag,
+	TThostFtdcPriceType limitPrice,
+	TThostFtdcVolumeType volume,
+	OrderPriceType orderPriceType,
+	HedgeFlag hedgeFlag,
+	TimeCondition timeCondition,
+	VolumeCondition volumeCondition,
+	ContingentCondition contingentCondition,
+	TThostFtdcVolumeType minVolume,
+	TThostFtdcPriceType stopPrice,
+	bool isAutoSuspend,
+	bool userForceClose,
+	int requestID)
+{
+	CThostFtdcInputOrderField req;
+	memset(&req, 0, sizeof req);
+	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+	strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
+
+	switch(direction) {
+		case Buy:
+			req.Direction = THOST_FTDC_D_Buy;
+			break;
+		case Sell:
+			req.Direction = THOST_FTDC_D_Sell;
+			break;
+		default:
+			throw InvalidArgument{"direction", "unknwon"};
+	}
+
+	switch (offsetFlag) {
+		case Open:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_Open;
+			break;
+		case Close:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_Close;
+			break;
+		case ForceClose:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceClose;
+			break;
+		case CloseToday:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseToday;
+			break;
+		case CloseYesterday:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseYesterday;
+			break;
+		case ForceOff:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceOff;
+			break;
+		case LocalForceClose:
+			req.CombOffsetFlag[0] = THOST_FTDC_OF_LocalForceClose;
+			break;
+		default:
+			throw InvalidArgument{"offset_flag", "unknwon"};
+	}
+
+	switch (orderPriceType) {
+		case AnyPrice:
+			req.OrderPriceType = THOST_FTDC_OPT_AnyPrice;
+			break;
+		case LimitPrice:
+			req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
+			break;
+		case BestPrice:
+			req.OrderPriceType = THOST_FTDC_OPT_BestPrice;
+			break;
+    	case LastPrice:
+			req.OrderPriceType = THOST_FTDC_OPT_LastPrice;
+			break;
+		case LastPricePlusOneTick:
+			req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusOneTicks;
+			break;
+		case LastPricePlusTwoTicks:
+			req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusTwoTicks;
+			break;
+		case LastPricePlusThreeTicks:
+			req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusThreeTicks;
+			break;
+    	case AskPrice1:
+			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1;
+			break;
+		case AskPrice1PlusOneTick:
+			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusOneTicks;
+			break;
+		case AskPrice1PlusTwoTicks:
+			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusTwoTicks;
+			break;
+		case AskPrice1PlusThreeTicks:
+			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusThreeTicks;
+			break;
+    	case BidPrice1:
+			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1;
+			break;
+		case BidPrice1PlusOneTick:
+			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusOneTicks;
+			break;
+		case BidPrice1PlusTwoTicks:
+			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusTwoTicks;
+			break;
+		case BidPrice1PlusThreeTicks:
+			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusThreeTicks;
+			break;
+    	case FiveLevelPrice:
+			req.OrderPriceType = THOST_FTDC_OPT_FiveLevelPrice;
+			break;
+		default:
+			throw InvalidArgument{"order_price_type", "unknown"};
+	}
+
+	switch (hedgeFlag) {
+		case Speculation:
+			req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
+			break;
+		case Arbitrage:
+			req.CombHedgeFlag[0] = THOST_FTDC_HF_Arbitrage;
+			break;
+		case Hedge:
+			req.CombHedgeFlag[0] = THOST_FTDC_HF_Hedge;
+			break;
+		case MarketMaker:
+			req.CombHedgeFlag[0] = THOST_FTDC_HF_MarketMaker;
+			break;
+		default:
+			throw InvalidArgument{"hedge_flag", "unknown"};
+	}
+
+	switch (timeCondition) {
+		case IOC:
+			req.TimeCondition = THOST_FTDC_TC_IOC;
+			break;
+		case GFS:
+			req.TimeCondition = THOST_FTDC_TC_GFS;
+			break;
+		case GFD:
+			req.TimeCondition = THOST_FTDC_TC_GFD;
+			break;
+		case GTD:
+			req.TimeCondition = THOST_FTDC_TC_GTD;
+			break;
+		case GTC:
+			req.TimeCondition = THOST_FTDC_TC_GTC;
+			break;
+		case GFA:
+			req.TimeCondition = THOST_FTDC_TC_GFA;
+			break;
+		default:
+			throw InvalidArgument{"time_condition", "unknown"};
+	}
+
+	switch (volumeCondition) {
+		case AV:
+			req.VolumeCondition = THOST_FTDC_VC_AV;
+			break;
+		case MV:
+			req.VolumeCondition = THOST_FTDC_VC_MV;
+			break;
+		case CV:
+			req.VolumeCondition = THOST_FTDC_VC_CV;
+			break;
+		default:
+			throw InvalidArgument{"volume_condition", "unknown"};
+	}
+
+	switch (contingentCondition) {
+		case Immediately:
+			req.ContingentCondition = THOST_FTDC_CC_Immediately;
+			break;
+		case Touch:
+			req.ContingentCondition = THOST_FTDC_CC_Touch;
+			break;
+		case TouchProfit:
+			req.ContingentCondition = THOST_FTDC_CC_TouchProfit;
+			break;
+		case ParkedOrder:
+			req.ContingentCondition = THOST_FTDC_CC_ParkedOrder;
+			break;
+    	case LastPriceGreaterThanStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterThanStopPrice;
+			break;
+		case LastPriceGreaterEqualStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterEqualStopPrice;
+			break;
+    	case LastPriceLesserThanStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserThanStopPrice;
+			break;
+		case LastPriceLesserEqualStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserEqualStopPrice;
+			break;
+    	case AskPriceGreaterThanStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterThanStopPrice;
+			break;
+		case AskPriceGreaterEqualStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterEqualStopPrice;
+			break;
+    	case AskPriceLesserThanStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserThanStopPrice;
+			break;
+		case AskPriceLesserEqualStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserEqualStopPrice;
+			break;
+    	case BidPriceGreaterThanStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterThanStopPrice;
+			break;
+		case BidPriceGreaterEqualStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterEqualStopPrice;
+			break;
+    	case BidPriceLesserThanStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserThanStopPrice;
+			break;
+		case BidPriceLesserEqualStopPrice:
+			req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserEqualStopPrice;
+			break;
+		default:
+			throw InvalidArgument{"contingent_condition", "unknown"};
+	}
+
+	req.MinVolume = minVolume;
+	req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
+	req.IsAutoSuspend = isAutoSuspend;
+	req.UserForceClose = userForceClose;
+	req.VolumeTotalOriginal = volume;
+	req.LimitPrice = limitPrice;
+
+	assert_request(_tdApi->ReqOrderInsert(&req, requestID));
+}
+
+void CtpClient::OrderAction(boost::python::dict kwargs)
+{
+
+}
+
+void CancelOrder(boost::python::dict kwargs)
+{
+
+}
+
+void ModifyOrder(boost::python::dict kwargs)
+{
+
 }
 
 #pragma endregion // Trader API

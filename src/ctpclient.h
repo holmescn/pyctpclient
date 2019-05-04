@@ -43,7 +43,39 @@ struct UnknownRequestException
     int rc;
     std::string request;
 };
+
+struct InvalidArgument
+{
+    std::string argument;
+    std::string value;
+};
 #pragma endregion
+
+#pragma region Enums
+
+enum Direction { Buy, Sell };
+enum OffsetFlag { Open, Close, ForceClose, CloseToday, CloseYesterday, ForceOff, LocalForceClose };
+enum OrderPriceType {
+    AnyPrice, LimitPrice, BestPrice,
+    LastPrice, LastPricePlusOneTick, LastPricePlusTwoTicks, LastPricePlusThreeTicks,
+    AskPrice1, AskPrice1PlusOneTick, AskPrice1PlusTwoTicks, AskPrice1PlusThreeTicks,
+    BidPrice1, BidPrice1PlusOneTick, BidPrice1PlusTwoTicks, BidPrice1PlusThreeTicks,
+    FiveLevelPrice
+};
+enum HedgeFlag { Speculation, Arbitrage, Hedge, MarketMaker };
+enum TimeCondition { IOC, GFS, GFD, GTD, GTC, GFA };
+enum VolumeCondition { AV, MV, CV };
+enum ContingentCondition {
+    Immediately, Touch, TouchProfit, ParkedOrder,
+    LastPriceGreaterThanStopPrice, LastPriceGreaterEqualStopPrice,
+    LastPriceLesserThanStopPrice, LastPriceLesserEqualStopPrice,
+    AskPriceGreaterThanStopPrice, AskPriceGreaterEqualStopPrice,
+    AskPriceLesserThanStopPrice, AskPriceLesserEqualStopPrice,
+    BidPriceGreaterThanStopPrice, BidPriceGreaterEqualStopPrice,
+    BidPriceLesserThanStopPrice, BidPriceLesserEqualStopPrice
+};
+
+#pragma endregion // Enums
 
 class CtpClient
 {
@@ -120,6 +152,25 @@ public:
     void QueryInvestorPositionDetail();
     void QueryMarketData(std::string instrumentId);
     void QuerySettlementInfo();
+    void InsertOrder(std::string instrumentId,
+                     Direction direction,
+                     OffsetFlag offsetFlag,
+                     TThostFtdcPriceType limitPrice,
+                     TThostFtdcVolumeType volume,
+                     OrderPriceType orderPriceType,
+                     HedgeFlag hedgeFlag,
+                     TimeCondition timeCondition,
+                     VolumeCondition volumeCondition,
+                     ContingentCondition contingentCondition,
+                     TThostFtdcVolumeType minVolume,
+                     TThostFtdcPriceType stopPrice,
+                     bool isAutoSuspend,
+                     bool userForceClose,
+                     int requestID
+                    );
+    void OrderAction(boost::python::dict kwargs);
+    void CancelOrder(boost::python::dict kwargs);
+    void ModifyOrder(boost::python::dict kwargs);
 
 public:
     // TraderSpi

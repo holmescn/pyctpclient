@@ -64,7 +64,77 @@ BOOST_PYTHON_MODULE(_ctpclient)
 	register_exception_translator<FullRequestQueueException>(FullRequestQueueException_translator);
 	register_exception_translator<RequestTooFrequentlyException>(RequestTooFrequentlyException_translator);
 	register_exception_translator<UnknownRequestException>(UnknownRequestException_translator);
- 
+
+	enum_<Direction>("Direction")
+		.value("BUY", Buy)
+		.value("SELL", Sell)
+		;
+
+	enum_<OffsetFlag>("OffsetFlag")
+		.value("OPEN", Open)
+		.value("CLOSE", Close)
+		.value("FORCE_CLOSE", ForceClose)
+		.value("CLOSE_TODAY", CloseToday)
+		.value("CLOSE_YESTERDAY", CloseYesterday)
+		.value("FORCE_OFF", ForceOff)
+		.value("LOCAL_FORCE_CLOSE", LocalForceClose)
+		;
+
+	enum_<OrderPriceType>("OrderPriceType")
+		.value("ANY_PRICE", AnyPrice)
+    .value("LIMIT_PRICE", LimitPrice)
+		.value("BEST_PRICE", BestPrice)
+		.value("LAST_PRICE", LastPrice)
+		.value("LAST_PRICE_PLUS_ONE_TICK", LastPricePlusOneTick)
+		.value("LAST_PRICE_PLUS_TWO_TICKS", LastPricePlusTwoTicks)
+		.value("LAST_PRICE_PLUS_THREE_TICKS", LastPricePlusThreeTicks)
+		.value("ASK_PRICE1", AskPrice1)
+		.value("ASK_PRICE1_PLUS_ONE_TICK", AskPrice1PlusOneTick)
+		.value("ASK_PRICE1_PLUS_TWO_TICKS", AskPrice1PlusTwoTicks)
+		.value("ASK_PRICE1_PLUS_THREE_TICKS", AskPrice1PlusThreeTicks)
+    .value("BID_PRICE1", BidPrice1)
+		.value("BID_PRICE1_PLUS_ONE_TICK", BidPrice1PlusOneTick)
+		.value("BID_PRICE1_PLUS_TWO_TICKS", BidPrice1PlusTwoTicks)
+		.value("BID_PRICE1_PLUS_THREE_TICKS", BidPrice1PlusThreeTicks)
+		.value("FIVE_LEVEL_PRICE", FiveLevelPrice);
+
+	enum_<HedgeFlag>("HedgeFlag")
+		.value("SPECULATION", Speculation)
+		.value("ARBITRAGE", Arbitrage)
+		.value("HEDGE", Hedge)
+		.value("MARKET_MAKER", MarketMaker);
+
+	enum_<TimeCondition>("TimeCondition")
+		.value("IOC", IOC)
+		.value("GFS", GFS)
+		.value("GFD", GFD)
+		.value("GTD", GTD)
+		.value("GTC", GTC)
+		.value("GFA", GFA);
+	
+	enum_<VolumeCondition>("VolumeCondition")
+		.value("ANY_VOLUME", AV)
+		.value("MIN_VOLUME", MV)
+		.value("COMPLETE_VOLUME", CV);
+
+	enum_<ContingentCondition>("ContingentCondition")
+    .value("IMMEDIATELY", Immediately)
+		.value("TOUCH", Touch)
+		.value("TOUCH_PROFIT", TouchProfit)
+		.value("PARKED_ORDER", ParkedOrder)
+    .value("LAST_PRICE_GREATER_THAN_STOP_PRICE", LastPriceGreaterThanStopPrice)
+		.value("LAST_PRICE_GREATER_EQUAL_STOP_PRICE", LastPriceGreaterEqualStopPrice)
+    .value("LAST_PRICE_LESSER_THAN_STOP_PRICE", LastPriceLesserThanStopPrice)
+		.value("LAST_PRICE_LESSER_EQUAL_STOP_PRICE", LastPriceLesserEqualStopPrice)
+    .value("ASK_PRICE_GREATER_THAN_STOP_PRICE", AskPriceGreaterThanStopPrice)
+		.value("ASK_PRICE_GREATER_EQUAL_STOP_PRICE", AskPriceGreaterEqualStopPrice)
+    .value("ASK_PRICE_LESSER_THAN_STOP_PRICE", AskPriceLesserThanStopPrice)
+		.value("ASK_PRICE_LESSER_EQUAL_STOP_PRICE", AskPriceLesserEqualStopPrice)
+    .value("BID_PRICE_GREATER_THAN_STOP_PRICE", BidPriceGreaterThanStopPrice)
+		.value("BID_PRICE_GREATER_EQUAL_STOP_PRICE", BidPriceGreaterEqualStopPrice)
+    .value("BID_PRICE_LESSER_THAN_STOP_PRICE", BidPriceLesserThanStopPrice)
+		.value("BID_PRICE_LESSER_EQUAL_STOP_PRICE", BidPriceLesserEqualStopPrice);
+
 	class_<CtpClientWrap, boost::noncopyable>("CtpClient", init<std::string, std::string, std::string, std::string, std::string>())
 	 	.add_property("flow_path", &CtpClient::GetFlowPath, &CtpClient::SetFlowPath)
 	 	.add_property("md_address", &CtpClient::GetMdAddr, &CtpClient::SetMdAddr)
@@ -98,6 +168,14 @@ BOOST_PYTHON_MODULE(_ctpclient)
 		.def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
 		.def("query_market_dara", &CtpClient::QueryMarketData)
 		.def("query_settlement_info", &CtpClient::QuerySettlementInfo)
+		.def("insert_order", &CtpClient::InsertOrder,
+			(arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),
+			 arg("volume"), arg("order_price_type")=LimitPrice,
+			 arg("hedge_flag")=Speculation, arg("time_condition")=GFS,
+			 arg("volume_condition")=AV, arg("contingent_condition")=Immediately,
+			 arg("min_volume")=1, arg("stop_price")=0.0,
+			 arg("is_auto_suspend")=false, arg("user_force_close")=false,
+			 arg("request_id")=0))
 		.def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
 		.def("on_settlement_info_confirm", pure_virtual(&CtpClient::OnRspSettlementInfoConfirm))
 		.def("on_rsp_order_insert", pure_virtual(&CtpClient::OnRspOrderInsert))

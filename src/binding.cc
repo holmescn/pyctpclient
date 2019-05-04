@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 #include <boost/python.hpp>
+#include <boost/smart_ptr.hpp>
 #include "ctpclient.h"
 
 using namespace boost::python;
+
+#pragma region Exception translators
 
 static void trans_exception(int rc, std::string request)
 {
@@ -45,6 +48,17 @@ void UnknownRequestException_translator(UnknownRequestException const& e)
 	trans_exception(e.rc, e.request);
 }
 
+void invalid_argument_translator(std::invalid_argument const& e)
+{
+	object msg = "InvalidArgument %s." % boost::python::make_tuple(e.what());
+	std::string msg_s = extract<std::string>(msg);
+  PyErr_SetString(PyExc_Exception, msg_s.c_str());
+}
+
+#pragma endregion // Exception translators
+
+#pragma region Getters
+
 object ResponseInfo_ErrorMsg(CThostFtdcRspInfoField const *pRspInfo)
 {
 	char *s = const_cast<char*>(pRspInfo->ErrorMsg);
@@ -58,82 +72,86 @@ str _InstrumentID(T const *obj)
 	return str(obj->InstrumentID);
 }
 
+#pragma endregion // Getters
+
 BOOST_PYTHON_MODULE(_ctpclient)
 {
 	register_exception_translator<RequestNetworkException>(RequestNetworkException_translator);
 	register_exception_translator<FullRequestQueueException>(FullRequestQueueException_translator);
 	register_exception_translator<RequestTooFrequentlyException>(RequestTooFrequentlyException_translator);
 	register_exception_translator<UnknownRequestException>(UnknownRequestException_translator);
+	register_exception_translator<std::invalid_argument>(invalid_argument_translator);
 
 	enum_<Direction>("Direction")
-		.value("BUY", Buy)
-		.value("SELL", Sell)
-		;
+		.value("BUY", D_Buy)
+		.value("SELL", D_Sell);
 
 	enum_<OffsetFlag>("OffsetFlag")
-		.value("OPEN", Open)
-		.value("CLOSE", Close)
-		.value("FORCE_CLOSE", ForceClose)
-		.value("CLOSE_TODAY", CloseToday)
-		.value("CLOSE_YESTERDAY", CloseYesterday)
-		.value("FORCE_OFF", ForceOff)
-		.value("LOCAL_FORCE_CLOSE", LocalForceClose)
-		;
+		.value("OPEN", OF_Open)
+		.value("CLOSE", OF_Close)
+		.value("FORCE_CLOSE", OF_ForceClose)
+		.value("CLOSE_TODAY", OF_CloseToday)
+		.value("CLOSE_YESTERDAY", OF_CloseYesterday)
+		.value("FORCE_OFF", OF_ForceOff)
+		.value("LOCAL_FORCE_CLOSE", OF_LocalForceClose);
 
 	enum_<OrderPriceType>("OrderPriceType")
-		.value("ANY_PRICE", AnyPrice)
-    .value("LIMIT_PRICE", LimitPrice)
-		.value("BEST_PRICE", BestPrice)
-		.value("LAST_PRICE", LastPrice)
-		.value("LAST_PRICE_PLUS_ONE_TICK", LastPricePlusOneTick)
-		.value("LAST_PRICE_PLUS_TWO_TICKS", LastPricePlusTwoTicks)
-		.value("LAST_PRICE_PLUS_THREE_TICKS", LastPricePlusThreeTicks)
-		.value("ASK_PRICE1", AskPrice1)
-		.value("ASK_PRICE1_PLUS_ONE_TICK", AskPrice1PlusOneTick)
-		.value("ASK_PRICE1_PLUS_TWO_TICKS", AskPrice1PlusTwoTicks)
-		.value("ASK_PRICE1_PLUS_THREE_TICKS", AskPrice1PlusThreeTicks)
-    .value("BID_PRICE1", BidPrice1)
-		.value("BID_PRICE1_PLUS_ONE_TICK", BidPrice1PlusOneTick)
-		.value("BID_PRICE1_PLUS_TWO_TICKS", BidPrice1PlusTwoTicks)
-		.value("BID_PRICE1_PLUS_THREE_TICKS", BidPrice1PlusThreeTicks)
-		.value("FIVE_LEVEL_PRICE", FiveLevelPrice);
+		.value("ANY_PRICE", OPT_AnyPrice)
+    .value("LIMIT_PRICE", OPT_LimitPrice)
+		.value("BEST_PRICE", OPT_BestPrice)
+		.value("LAST_PRICE", OPT_LastPrice)
+		.value("LAST_PRICE_PLUS_ONE_TICK", OPT_LastPricePlusOneTick)
+		.value("LAST_PRICE_PLUS_TWO_TICKS", OPT_LastPricePlusTwoTicks)
+		.value("LAST_PRICE_PLUS_THREE_TICKS", OPT_LastPricePlusThreeTicks)
+		.value("ASK_PRICE1", OPT_AskPrice1)
+		.value("ASK_PRICE1_PLUS_ONE_TICK", OPT_AskPrice1PlusOneTick)
+		.value("ASK_PRICE1_PLUS_TWO_TICKS", OPT_AskPrice1PlusTwoTicks)
+		.value("ASK_PRICE1_PLUS_THREE_TICKS", OPT_AskPrice1PlusThreeTicks)
+    .value("BID_PRICE1", OPT_BidPrice1)
+		.value("BID_PRICE1_PLUS_ONE_TICK", OPT_BidPrice1PlusOneTick)
+		.value("BID_PRICE1_PLUS_TWO_TICKS", OPT_BidPrice1PlusTwoTicks)
+		.value("BID_PRICE1_PLUS_THREE_TICKS", OPT_BidPrice1PlusThreeTicks)
+		.value("FIVE_LEVEL_PRICE", OPT_FiveLevelPrice);
 
 	enum_<HedgeFlag>("HedgeFlag")
-		.value("SPECULATION", Speculation)
-		.value("ARBITRAGE", Arbitrage)
-		.value("HEDGE", Hedge)
-		.value("MARKET_MAKER", MarketMaker);
+		.value("SPECULATION", HF_Speculation)
+		.value("ARBITRAGE", HF_Arbitrage)
+		.value("HEDGE", HF_Hedge)
+		.value("MARKET_MAKER", HF_MarketMaker);
 
 	enum_<TimeCondition>("TimeCondition")
-		.value("IOC", IOC)
-		.value("GFS", GFS)
-		.value("GFD", GFD)
-		.value("GTD", GTD)
-		.value("GTC", GTC)
-		.value("GFA", GFA);
+		.value("IOC", TC_IOC)
+		.value("GFS", TC_GFS)
+		.value("GFD", TC_GFD)
+		.value("GTD", TC_GTD)
+		.value("GTC", TC_GTC)
+		.value("GFA", TC_GFA);
 	
 	enum_<VolumeCondition>("VolumeCondition")
-		.value("ANY_VOLUME", AV)
-		.value("MIN_VOLUME", MV)
-		.value("COMPLETE_VOLUME", CV);
+		.value("ANY_VOLUME", VC_AV)
+		.value("MIN_VOLUME", VC_MV)
+		.value("ALL", VC_CV);
 
 	enum_<ContingentCondition>("ContingentCondition")
-    .value("IMMEDIATELY", Immediately)
-		.value("TOUCH", Touch)
-		.value("TOUCH_PROFIT", TouchProfit)
-		.value("PARKED_ORDER", ParkedOrder)
-    .value("LAST_PRICE_GREATER_THAN_STOP_PRICE", LastPriceGreaterThanStopPrice)
-		.value("LAST_PRICE_GREATER_EQUAL_STOP_PRICE", LastPriceGreaterEqualStopPrice)
-    .value("LAST_PRICE_LESSER_THAN_STOP_PRICE", LastPriceLesserThanStopPrice)
-		.value("LAST_PRICE_LESSER_EQUAL_STOP_PRICE", LastPriceLesserEqualStopPrice)
-    .value("ASK_PRICE_GREATER_THAN_STOP_PRICE", AskPriceGreaterThanStopPrice)
-		.value("ASK_PRICE_GREATER_EQUAL_STOP_PRICE", AskPriceGreaterEqualStopPrice)
-    .value("ASK_PRICE_LESSER_THAN_STOP_PRICE", AskPriceLesserThanStopPrice)
-		.value("ASK_PRICE_LESSER_EQUAL_STOP_PRICE", AskPriceLesserEqualStopPrice)
-    .value("BID_PRICE_GREATER_THAN_STOP_PRICE", BidPriceGreaterThanStopPrice)
-		.value("BID_PRICE_GREATER_EQUAL_STOP_PRICE", BidPriceGreaterEqualStopPrice)
-    .value("BID_PRICE_LESSER_THAN_STOP_PRICE", BidPriceLesserThanStopPrice)
-		.value("BID_PRICE_LESSER_EQUAL_STOP_PRICE", BidPriceLesserEqualStopPrice);
+    .value("IMMEDIATELY", CC_Immediately)
+		.value("TOUCH", CC_Touch)
+		.value("TOUCH_PROFIT", CC_TouchProfit)
+		.value("PARKED_ORDER", CC_ParkedOrder)
+    .value("LAST_PRICE_GREATER_THAN_STOP_PRICE", CC_LastPriceGreaterThanStopPrice)
+		.value("LAST_PRICE_GREATER_EQUAL_STOP_PRICE", CC_LastPriceGreaterEqualStopPrice)
+    .value("LAST_PRICE_LESSER_THAN_STOP_PRICE", CC_LastPriceLesserThanStopPrice)
+		.value("LAST_PRICE_LESSER_EQUAL_STOP_PRICE", CC_LastPriceLesserEqualStopPrice)
+    .value("ASK_PRICE_GREATER_THAN_STOP_PRICE", CC_AskPriceGreaterThanStopPrice)
+		.value("ASK_PRICE_GREATER_EQUAL_STOP_PRICE", CC_AskPriceGreaterEqualStopPrice)
+    .value("ASK_PRICE_LESSER_THAN_STOP_PRICE", CC_AskPriceLesserThanStopPrice)
+		.value("ASK_PRICE_LESSER_EQUAL_STOP_PRICE", CC_AskPriceLesserEqualStopPrice)
+    .value("BID_PRICE_GREATER_THAN_STOP_PRICE", CC_BidPriceGreaterThanStopPrice)
+		.value("BID_PRICE_GREATER_EQUAL_STOP_PRICE", CC_BidPriceGreaterEqualStopPrice)
+    .value("BID_PRICE_LESSER_THAN_STOP_PRICE", CC_BidPriceLesserThanStopPrice)
+		.value("BID_PRICE_LESSER_EQUAL_STOP_PRICE", CC_BidPriceLesserEqualStopPrice);
+	enum_<OrderActionFlag>("OrderActionFlag")
+		.value("Delete", AF_Delete)
+		.value("Modify", AF_Modify);
 
 	class_<CtpClientWrap, boost::noncopyable>("CtpClient", init<std::string, std::string, std::string, std::string, std::string>())
 	 	.add_property("flow_path", &CtpClient::GetFlowPath, &CtpClient::SetFlowPath)
@@ -170,12 +188,19 @@ BOOST_PYTHON_MODULE(_ctpclient)
 		.def("query_settlement_info", &CtpClient::QuerySettlementInfo)
 		.def("insert_order", &CtpClient::InsertOrder,
 			(arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),
-			 arg("volume"), arg("order_price_type")=LimitPrice,
-			 arg("hedge_flag")=Speculation, arg("time_condition")=GFS,
-			 arg("volume_condition")=AV, arg("contingent_condition")=Immediately,
+			 arg("volume"), arg("order_price_type")=OPT_LimitPrice,
+			 arg("hedge_flag")=HF_Speculation, arg("time_condition")=TC_GFS,
+			 arg("volume_condition")=VC_AV, arg("contingent_condition")=CC_Immediately,
 			 arg("min_volume")=1, arg("stop_price")=0.0,
 			 arg("is_auto_suspend")=false, arg("user_force_close")=false,
 			 arg("request_id")=0))
+		.def("order_action", &CtpClient::InsertOrder,
+			(arg("order"), arg("action_flag"), arg("limit_price")=0.0,
+			 arg("volume_change")=0, arg("request_id")=0))
+		.def("delete_order", &CtpClient::InsertOrder,
+			(arg("order"), arg("request_id")=0))
+		.def("modify_order", &CtpClient::InsertOrder,
+			(arg("order"), arg("limit_price")=0.0, arg("volume_change")=0, arg("request_id")=0))			
 		.def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
 		.def("on_settlement_info_confirm", pure_virtual(&CtpClient::OnRspSettlementInfoConfirm))
 		.def("on_rsp_order_insert", pure_virtual(&CtpClient::OnRspOrderInsert))
@@ -277,7 +302,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
 		.def_readonly("currency_id", &CThostFtdcSettlementInfoConfirmField::CurrencyID)
 		;
 
-	class_<CThostFtdcOrderField>("Order")
+	class_<CThostFtdcOrderField, boost::shared_ptr<CThostFtdcOrderField>>("Order")
 		.def_readonly("broker_id", &CThostFtdcOrderField::BrokerID)
 		.def_readonly("investor_id", &CThostFtdcOrderField::InvestorID)
 		.def_readonly("order_ref", &CThostFtdcOrderField::OrderRef)

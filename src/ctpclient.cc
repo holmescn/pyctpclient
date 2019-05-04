@@ -402,200 +402,200 @@ void CtpClient::InsertOrder(
 	strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
 
 	switch(direction) {
-		case Buy:
+		case D_Buy:
 			req.Direction = THOST_FTDC_D_Buy;
 			break;
-		case Sell:
+		case D_Sell:
 			req.Direction = THOST_FTDC_D_Sell;
 			break;
 		default:
-			throw InvalidArgument{"direction", "unknwon"};
+			throw std::invalid_argument("direction");
 	}
 
 	switch (offsetFlag) {
-		case Open:
+		case OF_Open:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_Open;
 			break;
-		case Close:
+		case OF_Close:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_Close;
 			break;
-		case ForceClose:
+		case OF_ForceClose:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceClose;
 			break;
-		case CloseToday:
+		case OF_CloseToday:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseToday;
 			break;
-		case CloseYesterday:
+		case OF_CloseYesterday:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseYesterday;
 			break;
-		case ForceOff:
+		case OF_ForceOff:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceOff;
 			break;
-		case LocalForceClose:
+		case OF_LocalForceClose:
 			req.CombOffsetFlag[0] = THOST_FTDC_OF_LocalForceClose;
 			break;
 		default:
-			throw InvalidArgument{"offset_flag", "unknwon"};
+			throw std::invalid_argument("offset_flag");
 	}
 
 	switch (orderPriceType) {
-		case AnyPrice:
+		case OPT_AnyPrice:
 			req.OrderPriceType = THOST_FTDC_OPT_AnyPrice;
 			break;
-		case LimitPrice:
+		case OPT_LimitPrice:
 			req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
 			break;
-		case BestPrice:
+		case OPT_BestPrice:
 			req.OrderPriceType = THOST_FTDC_OPT_BestPrice;
 			break;
-    	case LastPrice:
+    	case OPT_LastPrice:
 			req.OrderPriceType = THOST_FTDC_OPT_LastPrice;
 			break;
-		case LastPricePlusOneTick:
+		case OPT_LastPricePlusOneTick:
 			req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusOneTicks;
 			break;
-		case LastPricePlusTwoTicks:
+		case OPT_LastPricePlusTwoTicks:
 			req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusTwoTicks;
 			break;
-		case LastPricePlusThreeTicks:
+		case OPT_LastPricePlusThreeTicks:
 			req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusThreeTicks;
 			break;
-    	case AskPrice1:
+    	case OPT_AskPrice1:
 			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1;
 			break;
-		case AskPrice1PlusOneTick:
+		case OPT_AskPrice1PlusOneTick:
 			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusOneTicks;
 			break;
-		case AskPrice1PlusTwoTicks:
+		case OPT_AskPrice1PlusTwoTicks:
 			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusTwoTicks;
 			break;
-		case AskPrice1PlusThreeTicks:
+		case OPT_AskPrice1PlusThreeTicks:
 			req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusThreeTicks;
 			break;
-    	case BidPrice1:
+    	case OPT_BidPrice1:
 			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1;
 			break;
-		case BidPrice1PlusOneTick:
+		case OPT_BidPrice1PlusOneTick:
 			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusOneTicks;
 			break;
-		case BidPrice1PlusTwoTicks:
+		case OPT_BidPrice1PlusTwoTicks:
 			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusTwoTicks;
 			break;
-		case BidPrice1PlusThreeTicks:
+		case OPT_BidPrice1PlusThreeTicks:
 			req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusThreeTicks;
 			break;
-    	case FiveLevelPrice:
+    	case OPT_FiveLevelPrice:
 			req.OrderPriceType = THOST_FTDC_OPT_FiveLevelPrice;
 			break;
 		default:
-			throw InvalidArgument{"order_price_type", "unknown"};
+			throw std::invalid_argument("order_price_type");
 	}
 
 	switch (hedgeFlag) {
-		case Speculation:
+		case HF_Speculation:
 			req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
 			break;
-		case Arbitrage:
+		case HF_Arbitrage:
 			req.CombHedgeFlag[0] = THOST_FTDC_HF_Arbitrage;
 			break;
-		case Hedge:
+		case HF_Hedge:
 			req.CombHedgeFlag[0] = THOST_FTDC_HF_Hedge;
 			break;
-		case MarketMaker:
+		case HF_MarketMaker:
 			req.CombHedgeFlag[0] = THOST_FTDC_HF_MarketMaker;
 			break;
 		default:
-			throw InvalidArgument{"hedge_flag", "unknown"};
+			throw std::invalid_argument("hedge_flag");
 	}
 
 	switch (timeCondition) {
-		case IOC:
+		case TC_IOC:
 			req.TimeCondition = THOST_FTDC_TC_IOC;
 			break;
-		case GFS:
+		case TC_GFS:
 			req.TimeCondition = THOST_FTDC_TC_GFS;
 			break;
-		case GFD:
+		case TC_GFD:
 			req.TimeCondition = THOST_FTDC_TC_GFD;
 			break;
-		case GTD:
+		case TC_GTD:
 			req.TimeCondition = THOST_FTDC_TC_GTD;
 			break;
-		case GTC:
+		case TC_GTC:
 			req.TimeCondition = THOST_FTDC_TC_GTC;
 			break;
-		case GFA:
+		case TC_GFA:
 			req.TimeCondition = THOST_FTDC_TC_GFA;
 			break;
 		default:
-			throw InvalidArgument{"time_condition", "unknown"};
+			throw std::invalid_argument("time_condition");
 	}
 
 	switch (volumeCondition) {
-		case AV:
+		case VC_AV:
 			req.VolumeCondition = THOST_FTDC_VC_AV;
 			break;
-		case MV:
+		case VC_MV:
 			req.VolumeCondition = THOST_FTDC_VC_MV;
 			break;
-		case CV:
+		case VC_CV:
 			req.VolumeCondition = THOST_FTDC_VC_CV;
 			break;
 		default:
-			throw InvalidArgument{"volume_condition", "unknown"};
+			throw std::invalid_argument("volume_condition");
 	}
 
 	switch (contingentCondition) {
-		case Immediately:
+		case CC_Immediately:
 			req.ContingentCondition = THOST_FTDC_CC_Immediately;
 			break;
-		case Touch:
+		case CC_Touch:
 			req.ContingentCondition = THOST_FTDC_CC_Touch;
 			break;
-		case TouchProfit:
+		case CC_TouchProfit:
 			req.ContingentCondition = THOST_FTDC_CC_TouchProfit;
 			break;
-		case ParkedOrder:
+		case CC_ParkedOrder:
 			req.ContingentCondition = THOST_FTDC_CC_ParkedOrder;
 			break;
-    	case LastPriceGreaterThanStopPrice:
+    	case CC_LastPriceGreaterThanStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterThanStopPrice;
 			break;
-		case LastPriceGreaterEqualStopPrice:
+		case CC_LastPriceGreaterEqualStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterEqualStopPrice;
 			break;
-    	case LastPriceLesserThanStopPrice:
+    	case CC_LastPriceLesserThanStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserThanStopPrice;
 			break;
-		case LastPriceLesserEqualStopPrice:
+		case CC_LastPriceLesserEqualStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserEqualStopPrice;
 			break;
-    	case AskPriceGreaterThanStopPrice:
+    	case CC_AskPriceGreaterThanStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterThanStopPrice;
 			break;
-		case AskPriceGreaterEqualStopPrice:
+		case CC_AskPriceGreaterEqualStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterEqualStopPrice;
 			break;
-    	case AskPriceLesserThanStopPrice:
+    	case CC_AskPriceLesserThanStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserThanStopPrice;
 			break;
-		case AskPriceLesserEqualStopPrice:
+		case CC_AskPriceLesserEqualStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserEqualStopPrice;
 			break;
-    	case BidPriceGreaterThanStopPrice:
+    	case CC_BidPriceGreaterThanStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterThanStopPrice;
 			break;
-		case BidPriceGreaterEqualStopPrice:
+		case CC_BidPriceGreaterEqualStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterEqualStopPrice;
 			break;
-    	case BidPriceLesserThanStopPrice:
+    	case CC_BidPriceLesserThanStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserThanStopPrice;
 			break;
-		case BidPriceLesserEqualStopPrice:
+		case CC_BidPriceLesserEqualStopPrice:
 			req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserEqualStopPrice;
 			break;
 		default:
-			throw InvalidArgument{"contingent_condition", "unknown"};
+			throw std::invalid_argument("contingent_condition");
 	}
 
 	req.MinVolume = minVolume;
@@ -608,19 +608,53 @@ void CtpClient::InsertOrder(
 	assert_request(_tdApi->ReqOrderInsert(&req, requestID));
 }
 
-void CtpClient::OrderAction(boost::python::dict kwargs)
+void CtpClient::OrderAction(
+	boost::shared_ptr<CThostFtdcOrderField> pOrder,
+	OrderActionFlag actionFlag,
+    TThostFtdcPriceType limitPrice,
+    TThostFtdcVolumeType volumeChange,
+	int requestId)
 {
+	CThostFtdcInputOrderActionField req;
+	memset(&req, 0, sizeof req);
 
+	strncpy(req.BrokerID, pOrder->BrokerID, sizeof req.BrokerID);
+	strncpy(req.InvestorID, pOrder->InvestorID, sizeof req.InvestorID);
+	strncpy(req.OrderRef, pOrder->OrderRef, sizeof req.OrderRef);
+	strncpy(req.ExchangeID, pOrder->ExchangeID, sizeof req.ExchangeID);
+	strncpy(req.OrderSysID, pOrder->OrderSysID, sizeof req.OrderSysID);
+	strncpy(req.InstrumentID, pOrder->InstrumentID, sizeof req.InstrumentID);
+	req.FrontID = pOrder->FrontID;
+	req.SessionID = pOrder->SessionID;
+
+	switch (actionFlag) {
+		case AF_Delete:
+			req.ActionFlag = THOST_FTDC_AF_Delete;
+			break;
+		case AF_Modify:
+			req.ActionFlag = THOST_FTDC_AF_Modify;
+			break;
+		default:
+			throw std::invalid_argument("action_flag");
+	}
+	req.LimitPrice = limitPrice;
+	req.VolumeChange = volumeChange;
+
+	assert_request(_tdApi->ReqOrderAction(&req, requestId));
 }
 
-void CancelOrder(boost::python::dict kwargs)
+void CtpClient::DeleteOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder, int requestId)
 {
-
+	OrderAction(pOrder, AF_Delete, 0.0, 0, requestId);
 }
 
-void ModifyOrder(boost::python::dict kwargs)
+void CtpClient::ModifyOrder(
+	boost::shared_ptr<CThostFtdcOrderField> pOrder,
+    TThostFtdcPriceType limitPrice,
+    TThostFtdcVolumeType volumeChange,
+    int requestId)
 {
-
+	OrderAction(pOrder, AF_Modify, limitPrice, volumeChange, requestId);
 }
 
 #pragma endregion // Trader API
@@ -704,7 +738,7 @@ void CtpClientWrap::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction
 	}
 }
 
-void CtpClientWrap::OnRtnOrder(CThostFtdcOrderField *pOrder)
+void CtpClientWrap::OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder)
 {
 	if (override fn = get_override("on_rtn_order")) {
 		fn(pOrder);

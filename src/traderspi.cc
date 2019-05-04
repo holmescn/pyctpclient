@@ -78,7 +78,9 @@ void TraderSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CT
 
 void TraderSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
-    _client->OnRtnOrder(pOrder);
+    CThostFtdcOrderField *pNewOrder = new CThostFtdcOrderField;
+    memcpy(pNewOrder, pOrder, sizeof(CThostFtdcOrderField));
+    _client->OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField>(pNewOrder));
 }
 
 void TraderSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)

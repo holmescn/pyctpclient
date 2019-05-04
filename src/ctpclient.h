@@ -15,6 +15,7 @@
  */
 #pragma once
 #include <boost/python.hpp>
+#include <boost/shared_ptr.hpp>
 #include "ThostFtdcUserApiStruct.h"
 
 class MdSpi;
@@ -44,36 +45,34 @@ struct UnknownRequestException
     std::string request;
 };
 
-struct InvalidArgument
-{
-    std::string argument;
-    std::string value;
-};
 #pragma endregion
 
 #pragma region Enums
 
-enum Direction { Buy, Sell };
-enum OffsetFlag { Open, Close, ForceClose, CloseToday, CloseYesterday, ForceOff, LocalForceClose };
+enum Direction { D_Buy, D_Sell };
+enum OffsetFlag {
+        OF_Open, OF_Close, OF_ForceClose, OF_CloseToday, OF_CloseYesterday,
+        OF_ForceOff, OF_LocalForceClose };
 enum OrderPriceType {
-    AnyPrice, LimitPrice, BestPrice,
-    LastPrice, LastPricePlusOneTick, LastPricePlusTwoTicks, LastPricePlusThreeTicks,
-    AskPrice1, AskPrice1PlusOneTick, AskPrice1PlusTwoTicks, AskPrice1PlusThreeTicks,
-    BidPrice1, BidPrice1PlusOneTick, BidPrice1PlusTwoTicks, BidPrice1PlusThreeTicks,
-    FiveLevelPrice
+    OPT_AnyPrice, OPT_LimitPrice, OPT_BestPrice,
+    OPT_LastPrice, OPT_LastPricePlusOneTick, OPT_LastPricePlusTwoTicks, OPT_LastPricePlusThreeTicks,
+    OPT_AskPrice1, OPT_AskPrice1PlusOneTick, OPT_AskPrice1PlusTwoTicks, OPT_AskPrice1PlusThreeTicks,
+    OPT_BidPrice1, OPT_BidPrice1PlusOneTick, OPT_BidPrice1PlusTwoTicks, OPT_BidPrice1PlusThreeTicks,
+    OPT_FiveLevelPrice
 };
-enum HedgeFlag { Speculation, Arbitrage, Hedge, MarketMaker };
-enum TimeCondition { IOC, GFS, GFD, GTD, GTC, GFA };
-enum VolumeCondition { AV, MV, CV };
+enum HedgeFlag { HF_Speculation, HF_Arbitrage, HF_Hedge, HF_MarketMaker };
+enum TimeCondition { TC_IOC, TC_GFS, TC_GFD, TC_GTD, TC_GTC, TC_GFA };
+enum VolumeCondition { VC_AV, VC_MV, VC_CV };
 enum ContingentCondition {
-    Immediately, Touch, TouchProfit, ParkedOrder,
-    LastPriceGreaterThanStopPrice, LastPriceGreaterEqualStopPrice,
-    LastPriceLesserThanStopPrice, LastPriceLesserEqualStopPrice,
-    AskPriceGreaterThanStopPrice, AskPriceGreaterEqualStopPrice,
-    AskPriceLesserThanStopPrice, AskPriceLesserEqualStopPrice,
-    BidPriceGreaterThanStopPrice, BidPriceGreaterEqualStopPrice,
-    BidPriceLesserThanStopPrice, BidPriceLesserEqualStopPrice
+    CC_Immediately, CC_Touch, CC_TouchProfit, CC_ParkedOrder,
+    CC_LastPriceGreaterThanStopPrice, CC_LastPriceGreaterEqualStopPrice,
+    CC_LastPriceLesserThanStopPrice, CC_LastPriceLesserEqualStopPrice,
+    CC_AskPriceGreaterThanStopPrice, CC_AskPriceGreaterEqualStopPrice,
+    CC_AskPriceLesserThanStopPrice, CC_AskPriceLesserEqualStopPrice,
+    CC_BidPriceGreaterThanStopPrice, CC_BidPriceGreaterEqualStopPrice,
+    CC_BidPriceLesserThanStopPrice, CC_BidPriceLesserEqualStopPrice
 };
+enum OrderActionFlag { AF_Delete, AF_Modify };
 
 #pragma endregion // Enums
 
@@ -168,9 +167,17 @@ public:
                      bool userForceClose,
                      int requestID
                     );
-    void OrderAction(boost::python::dict kwargs);
-    void CancelOrder(boost::python::dict kwargs);
-    void ModifyOrder(boost::python::dict kwargs);
+
+    void OrderAction(boost::shared_ptr<CThostFtdcOrderField> pOrder,
+                     OrderActionFlag actionFlag,
+                     TThostFtdcPriceType limitPrice,
+                     TThostFtdcVolumeType volumeChange,
+                     int requestId);
+    void DeleteOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder, int requestId);
+    void ModifyOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder,
+                     TThostFtdcPriceType limitPrice,
+                     TThostFtdcVolumeType volumeChange,
+                     int requestId);
 
 public:
     // TraderSpi
@@ -183,7 +190,7 @@ public:
 	virtual void OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
-	virtual void OnRtnOrder(CThostFtdcOrderField *pOrder) = 0;
+	virtual void OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder) = 0;
 	virtual void OnRtnTrade(CThostFtdcTradeField *pTrade) = 0;
 	virtual void OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 
@@ -223,7 +230,7 @@ public:
 	void OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) override;
-	void OnRtnOrder(CThostFtdcOrderField *pOrder) override;
+	void OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder) override;
 	void OnRtnTrade(CThostFtdcTradeField *pTrade) override;
 	void OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 

@@ -1,0 +1,19 @@
+version: "3.5"
+services:
+  dev:
+    image: "ctp:dev"
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.dev
+    volumes:
+      - type: bind
+        source: .
+        target: /tmp/src
+    command: /bin/bash
+  pkg:
+    image: "ctp:pkg"
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.pkg
+    command: /bin/bash
+

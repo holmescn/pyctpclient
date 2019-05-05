@@ -17,7 +17,6 @@ if sys.platform == 'win32':
         'thostmduserapi',
         'thosttraderapi'
     ]
-    package_data = ['*.lib', '*.md']
 elif sys.platform == "linux":
     include_dirs = ['/usr/include']
     library_dirs = [
@@ -29,17 +28,16 @@ elif sys.platform == "linux":
         'thostmduserapi',
         'thosttraderapi'
     ]
-    package_data = ['lib/*.so']
 else:
     raise NotImplemented
 
 
-ctpclient_ext = Extension('pyctpclient.ctpclient',
+ctpclient_ext = Extension('pyctpclient._ctpclient',
                           sources=[
-                            'ctpclient_ext/binding.cpp',
-                            'ctpclient_ext/ctpclient.cpp',
-                            'ctpclient_ext//mdspi.cpp',
-                            'ctpclient_ext//traderspi.cpp'
+                            'src/ctpclient_ext/binding.cpp',
+                            'src/ctpclient_ext/ctpclient.cpp',
+                            'src/ctpclient_ext//mdspi.cpp',
+                            'src/ctpclient_ext//traderspi.cpp'
                           ],
                           include_dirs=include_dirs,
                           library_dirs=library_dirs,
@@ -58,14 +56,13 @@ CTP python client wrapped by Boost::python3.
     url='https://github.com/holmescn/pyctpclient/',
     license='Apache-2.0',
     ext_modules=[ctpclient_ext],
-    packages=find_packages(),
+    packages=find_packages("src"),
+    package_dir={"": "src"},
     keywords="ctp client",
     project_urls={
         "Bug Tracker": "https://github.com/holmescn/pyctpclient/issues",
         "Documentation": "https://github.com/holmescn/pyctpclient",
         "Source Code": "https://github.com/holmescn/pyctpclient",
     },
-    package_data={
-        '': package_data,
-    }
+    include_package_data=True
 )

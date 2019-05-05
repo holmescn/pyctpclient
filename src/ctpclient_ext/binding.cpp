@@ -74,7 +74,7 @@ str _InstrumentID(T const *obj)
 
 #pragma endregion // Getters
 
-BOOST_PYTHON_MODULE(ctpclient)
+BOOST_PYTHON_MODULE(_ctpclient)
 {
 	register_exception_translator<RequestNetworkException>(RequestNetworkException_translator);
 	register_exception_translator<FullRequestQueueException>(FullRequestQueueException_translator);

@@ -27,7 +27,7 @@ public:
     TraderSpi(TraderSpi&&) = delete;
     TraderSpi& operator=(const TraderSpi&) = delete;
     TraderSpi& operator=(TraderSpi&&) = delete;
-    ~TraderSpi();
+    virtual ~TraderSpi();
 
 public:
 	void OnFrontConnected() override;

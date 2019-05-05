@@ -15,5 +15,9 @@ services:
     build:
       context: .
       dockerfile: ./dockerfiles/Dockerfile.pkg
+    volumes:
+      - type: bind
+        source: .
+        target: /tmp/src
     command: /bin/bash
 

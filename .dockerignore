@@ -1,0 +1,5 @@
+.vs
+bin
+lib/*.lib
+lib/*.pdb
+ctp_web/node_modules

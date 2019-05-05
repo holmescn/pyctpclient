@@ -44,7 +44,7 @@ public:
     MdSpi(MdSpi&&) = delete;
     MdSpi& operator=(const MdSpi&) = delete;
     MdSpi& operator=(MdSpi&&) = delete;
-    ~MdSpi();
+    virtual ~MdSpi();
 
 public:
 	void OnFrontConnected() override;

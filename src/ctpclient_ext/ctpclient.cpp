@@ -15,7 +15,6 @@
  */
 #include <cstring>
 #include <chrono>
-#include <thread>
 #include <string>
 #include <iostream>
 #include <boost/filesystem.hpp>
@@ -114,7 +113,13 @@ void CtpClient::Run()
 		_tdApi->Init();
 	}
 
-	std::this_thread::sleep_for(std::chrono::seconds(10));
+	auto future = _joinLock.get_future();
+	future.wait_for(std::chrono::hours(24));
+}
+
+void CtpClient::Exit()
+{
+	_joinLock.set_value();
 }
 
 CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
@@ -248,8 +253,6 @@ void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarket
 {
 	if (override fn = get_override("on_rtn_market_data")) {
 		fn(pDepthMarketData);
-	} else {
-		std::cerr << "Market Data User Logout" << std::endl;
 	}
 }
 
@@ -682,20 +685,20 @@ void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 	}
 }
 
-void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_td_user_login")) {
-		fn(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
+		fn(pRspUserLogin, pRspInfo);
 	} else {
 		std::cerr << "Trader User Login" << std::endl;
 		ConfirmSettlementInfo();
 	}
 }
 
-void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_td_user_logout")) {
-		fn(pUserLogout, pRspInfo, nRequestID, bIsLast);
+		fn(pUserLogout, pRspInfo);
 	} else {
 		std::cerr << "Trader User Logout" << std::endl;
 	}

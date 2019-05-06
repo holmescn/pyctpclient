@@ -1,7 +1,6 @@
 import os
 import sys
 from setuptools import setup, find_packages, Extension
-from src.pyctpclient import __version__
 
 if sys.platform == 'win32':
     VCPKG_DIR = os.getenv("VCPKG_DIR")
@@ -17,17 +16,20 @@ if sys.platform == 'win32':
         'thostmduserapi',
         'thosttraderapi'
     ]
+    extra_compile_args = []
 elif sys.platform == "linux":
-    include_dirs = ['/usr/include']
+    include_dirs = []
     library_dirs = [
-        '/usr/lib/x86_64-linux-gnu',
         os.path.abspath("./lib")
     ]
     libraries = [
-        'boost_python3',
+        'boost_system',
+        'boost_filesystem',
+        'boost_python-py35',
         'thostmduserapi',
         'thosttraderapi'
     ]
+    extra_compile_args = ['-std=c++14', '-Wall', '-Wextra', '-Wno-unknown-pragmas', '-Wno-unused-parameter']
 else:
     raise NotImplemented
 
@@ -39,6 +41,7 @@ ctpclient_ext = Extension('pyctpclient._ctpclient',
                             'src/ctpclient_ext//mdspi.cpp',
                             'src/ctpclient_ext//traderspi.cpp'
                           ],
+                          extra_compile_args=extra_compile_args,
                           include_dirs=include_dirs,
                           library_dirs=library_dirs,
                           libraries=libraries)
@@ -46,7 +49,7 @@ ctpclient_ext = Extension('pyctpclient._ctpclient',
 setup(
     name='pyctpclient',
     platforms=['linux'],
-    version=__version__,
+    version='0.0.1a0',
     description='CTP python client.',
     long_description = '''
 CTP python client wrapped by Boost::python3.

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <iostream>
 #include "traderspi.h"
 #include "ctpclient.h"
 
@@ -36,32 +37,32 @@ void TraderSpi::OnFrontDisconnected(int nReason)
     _client->OnTdFrontDisconnected(nReason);
 }
 
-void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField * /* pRspAuthenticateField */, CThostFtdcRspInfoField * /* pRspInfo */, int /* nRequestID */, bool /* bIsLast */)
 {
-
+    //
 }
 
 void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnTdUserLogin(pRspUserLogin, pRspInfo, nRequestID, bIsLast);
+    _client->OnTdUserLogin(pRspUserLogin, pRspInfo);
 }
 
 void TraderSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnTdUserLogout(pUserLogout, pRspInfo, nRequestID, bIsLast);
+    _client->OnTdUserLogout(pUserLogout, pRspInfo);
 }
 
-void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
 {
     _client->OnRspSettlementInfoConfirm(pSettlementInfoConfirm, pRspInfo);
 }
 
-void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
 {
     _client->OnRspOrderInsert(pInputOrder, pRspInfo);
 }
 
-void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
 {
     _client->OnRspOrderAction(pInputOrderAction, pRspInfo);
 }
@@ -93,37 +94,37 @@ void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, boo
     _client->OnTdError(pRspInfo, nRequestID, bIsLast);
 }
 
-void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
 {
     _client->OnRspQryOrder(pOrder, pRspInfo, bIsLast);    
 }
 
-void TraderSpi::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
 {
     _client->OnRspQryTrade(pTrade, pRspInfo, bIsLast);
 }
 
-void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
 {
     _client->OnRspQryTradingAccount(pTradingAccount, pRspInfo, bIsLast);   
 }
 
-void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
 {
     _client->OnRspQryInvestorPosition(pInvestorPosition, pRspInfo, bIsLast);
 }
 
-void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
 {
     _client->OnRspQryDepthMarketData(pDepthMarketData, pRspInfo, bIsLast);
 }
 
-void TraderSpi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
 {
     _client->OnRspQrySettlementInfo(pSettlementInfo, pRspInfo);
 }
 
-void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
 {
     _client->OnRspQryInvestorPositionDetail(pInvestorPositionDetail, pRspInfo, bIsLast);
 }

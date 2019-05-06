@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <future>
 #include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 #include "ThostFtdcUserApiStruct.h"
@@ -24,6 +25,7 @@ class CThostFtdcMdApi;
 class CThostFtdcTraderApi;
 
 #pragma region Exception
+
 struct RequestNetworkException
 {
     std::string request;
@@ -90,6 +92,7 @@ protected:
     std::string _userId;
     std::string _password;
     boost::python::list _instrumentIds;
+    std::promise<void> _joinLock;
 
 public:
     CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
@@ -100,6 +103,7 @@ public:
     virtual ~CtpClient();
 
     void Run();
+    void Exit();
 
 public:
     // Getter/Setter
@@ -183,8 +187,8 @@ public:
     // TraderSpi
 	virtual void OnTdFrontConnected() = 0;
     virtual void OnTdFrontDisconnected(int nReason) = 0;
-	virtual void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
-	virtual void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+	virtual void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
@@ -223,8 +227,8 @@ public:
 
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
-	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
-	void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) override;
+	void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo) override;

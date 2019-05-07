@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <csignal>
 #include <cstring>
 #include <chrono>
 #include <string>
+#include <future>
 #include <thread>
 #include <iostream>
 #include <boost/filesystem.hpp>
@@ -27,6 +29,13 @@
 #include "ctpclient.h"
 
 using namespace boost::python;
+
+std::promise<void> g_joinPromise;
+
+void signal_handler(int signal)
+{
+	g_joinPromise.set_value();
+}
 
 #define assert_request(request) _assertRequest((request), #request)
 
@@ -55,7 +64,7 @@ void _assertRequest(int rc, const char *request)
 CtpClient::CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
 : _mdAddr(mdAddr), _tdAddr(tdAddr), _brokerId(brokerId), _userId(userId), _password(password)
 {
-	//
+	std::signal(SIGINT, signal_handler);
 }
 
 CtpClient::~CtpClient()
@@ -114,13 +123,13 @@ void CtpClient::Run()
 		_tdApi->Init();
 	}
 
-	auto future = _joinPromise.get_future();
+	auto future = g_joinPromise.get_future();
 	future.wait_for(std::chrono::hours(24));
 }
 
 void CtpClient::Exit()
 {
-	_joinPromise.set_value();
+	g_joinPromise.set_value();
 }
 
 CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)

@@ -15,7 +15,6 @@
  */
 #pragma once
 #include <chrono>
-#include <future>
 #include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 #include "ThostFtdcUserApiStruct.h"
@@ -92,7 +91,6 @@ class CtpClient
     std::string _brokerId;
     std::string _userId;
     std::string _password;
-    std::promise<void> _joinPromise;
     std::chrono::steady_clock::time_point _queryTick = std::chrono::steady_clock::now();
 
 protected:

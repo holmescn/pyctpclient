@@ -959,9 +959,9 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("order_action", &CtpClient::InsertOrder,
       (arg("order"), arg("action_flag"), arg("limit_price")=0.0,
        arg("volume_change")=0, arg("request_id")=0))
-    .def("delete_order", &CtpClient::InsertOrder,
+    .def("delete_order", &CtpClient::DeleteOrder,
       (arg("order"), arg("request_id")=0))
-    .def("modify_order", &CtpClient::InsertOrder,
+    .def("modify_order", &CtpClient::ModifyOrder,
       (arg("order"), arg("limit_price")=0.0, arg("volume_change")=0, arg("request_id")=0))			
     .def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
     .def("on_td_user_login", pure_virtual(&CtpClient::OnTdUserLogin))

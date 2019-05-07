@@ -49,7 +49,7 @@ ctpclient_ext = Extension('pyctpclient._ctpclient',
 setup(
     name='pyctpclient',
     platforms=['linux'],
-    version='0.1.0a0',
+    version='0.1.1a0',
     description='CTP python client.',
     long_description = '''
 CTP python client wrapped by Boost::python3.

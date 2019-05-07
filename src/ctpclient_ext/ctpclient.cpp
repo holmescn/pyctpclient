@@ -115,8 +115,7 @@ void CtpClient::Run()
 	}
 
 	auto future = _joinPromise.get_future();
-	// future.wait_for(std::chrono::hours(24));
-	future.wait_for(std::chrono::seconds(120));
+	future.wait_for(std::chrono::hours(24));
 }
 
 void CtpClient::Exit()

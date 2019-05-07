@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
+import signal
 from pyctpclient import CtpClient, Direction, OffsetFlag
-
 
 class Client(CtpClient):
     def on_tick(self, instrument_id, price, volume, time):
@@ -52,3 +52,8 @@ if __name__ == "__main__":
     c = Client("tcp://180.168.146.187:10011", "tcp://180.168.146.187:10001", "9999", "", "")
     c.instrument_ids = ['IF1905', 'rb1910']
     c.run()
+
+    def signal_handler(sig, frame):
+        c.exit()
+
+    signal.signal(signal.SIGINT, signal_handler)

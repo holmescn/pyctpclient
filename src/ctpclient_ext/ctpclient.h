@@ -51,7 +51,7 @@ struct UnknownRequestException
 
 #pragma region Enums
 
-enum Direction { D_Buy, D_Sell };
+enum Direction { D_Unknown, D_Buy, D_Sell };
 enum OffsetFlag {
         OF_Open, OF_Close, OF_ForceClose, OF_CloseToday, OF_CloseYesterday,
         OF_ForceOff, OF_LocalForceClose };

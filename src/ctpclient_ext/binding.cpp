@@ -16,6 +16,7 @@
 #include <boost/python.hpp>
 #include <boost/smart_ptr.hpp>
 #include "ctpclient.h"
+#include "mdspi.h"
 
 using namespace boost::python;
 
@@ -60,7 +61,7 @@ void invalid_argument_translator(std::invalid_argument const& e)
 #pragma region Getters
 
 template<class T1, class T2>
-boost::python::object tostr(T2 T1::*member_var)
+inline boost::python::object tostr(T2 T1::*member_var)
 {
   return make_function(
         [member_var](T1 const* this_) { return str(this_->*member_var); },
@@ -69,7 +70,7 @@ boost::python::object tostr(T2 T1::*member_var)
 }
 
 template<class T1, class T2>
-boost::python::object tobytes(T2 T1::*member_var)
+inline boost::python::object tobytes(T2 T1::*member_var)
 {
   return make_function(
         [member_var](T1 const* this_) {
@@ -90,78 +91,6 @@ str InvestorPosition_PositionDate(CThostFtdcInvestorPositionField const *this_)
   }
 }
 
-template<class T, TThostFtdcDateType T::*date>
-str tostr_DateType(T const *this_)
-{
-  return str(this_->*date);
-}
-
-template<class T, TThostFtdcTimeType T::*time>
-str tostr_TimeType(T const *this_)
-{
-  return str(this_->*time);
-}
-
-template<class T>
-str tostr_InstrumentID(T const *this_)
-{
-  return str(this_->InstrumentID);
-}
-
-template<class T>
-str tostr_TradingDay(T const *this_)
-{
-  return str(this_->TradingDay);
-}
-
-template<class T>
-str tostr_BrokerID(T const *this_)
-{
-  return str(this_->BrokerID);
-}
-
-template<class T>
-str tostr_UserID(T const *this_)
-{
-  return str(this_->UserID);
-}
-
-template<class T>
-str tostr_InvestorID(T const *this_)
-{
-  return str(this_->InvestorID);
-}
-
-template<class T>
-str tostr_AccountID(T const *this_)
-{
-  return str(this_->AccountID);
-}
-
-template<class T>
-str tostr_ExchangeID(T const *this_)
-{
-  return str(this_->ExchangeID);
-}
-
-template<class T>
-str tostr_CurrencyID(T const *this_)
-{
-  return str(this_->CurrencyID);
-}
-
-template<class T>
-str tostr_TradeID(T const *this_)
-{
-  return str(this_->TradeID);
-}
-
-template<class T>
-str tostr_OrderRef(T const *this_)
-{
-  return str(this_->OrderRef);
-}
-
 template<class T>
 str tostr_PositionDirection(T const *this_)
 {
@@ -174,24 +103,12 @@ str tostr_PositionDirection(T const *this_)
 }
 
 template<class T>
-Direction tostr_Direction(T const *this_)
+Direction toenum_Direction(T const *this_)
 {
   switch(this_->Direction) {
     case THOST_FTDC_D_Buy:  return D_Buy;
     case THOST_FTDC_D_Sell: return D_Sell;
     default: return D_Unknown;
-  }
-}
-
-template<class T>
-str tostr_HedgeFlag(T const *this_)
-{
-  switch(this_->HedgeFlag) {
-    case THOST_FTDC_HF_Speculation: return str("speculation");
-    case THOST_FTDC_HF_Arbitrage:   return str("arbitrage");
-    case THOST_FTDC_HF_Hedge:       return str("hedge");
-    case THOST_FTDC_HF_MarketMaker: return str("market_maker");
-    default: return str("unknown");
   }
 }
 
@@ -234,6 +151,21 @@ str tostr_OrderPriceType(T const *this_)
 }
 
 template<class T>
+str tostr_OffsetFlag(T const *this_)
+{
+  switch(this_->OffsetFlag) {
+    case THOST_FTDC_OF_Open: return str("open");
+    case THOST_FTDC_OF_Close: return str("close");
+    case THOST_FTDC_OF_ForceClose: return str("force_close");
+    case THOST_FTDC_OF_CloseToday: return str("close_today");
+    case THOST_FTDC_OF_CloseYesterday: return str("close_yesterday");
+    case THOST_FTDC_OF_ForceOff: return str("force_off");
+    case THOST_FTDC_OF_LocalForceClose: return str("local_force_close");
+    default: return str("unknown");
+  }
+}
+
+template<class T>
 list tolist_CombOffsetFlag(T const *this_)
 {
   list L;
@@ -267,6 +199,18 @@ list tolist_CombOffsetFlag(T const *this_)
   }
 
   return L;
+}
+
+template<class T>
+str tostr_HedgeFlag(T const *this_)
+{
+  switch(this_->HedgeFlag) {
+    case THOST_FTDC_HF_Speculation: return str("speculation");
+    case THOST_FTDC_HF_Arbitrage: return str("arbitrage");
+    case THOST_FTDC_HF_Hedge: return str("hedge");
+    case THOST_FTDC_HF_MarketMaker: return str("market_maker");
+    default: return str("unknown");
+  }
 }
 
 template<class T>
@@ -426,6 +370,49 @@ str tostr_OrderType(T const *this_)
   }
 }
 
+template<class T>
+str tostr_TradingRole(T const *this_)
+{
+  switch (this_->TradingRole) {
+    case THOST_FTDC_ER_Broker: return str("broker");
+    case THOST_FTDC_ER_Host: return str("host");
+    case THOST_FTDC_ER_Maker: return str("market_maker");
+    default: return str("unknown");
+  }
+}
+
+template<class T>
+str tostr_PriceSource(T const* this_)
+{
+  switch(this_->PriceSource) {
+    case THOST_FTDC_PSRC_LastPrice: return str("last_price");
+    case THOST_FTDC_PSRC_Buy: return str("buy");
+    case THOST_FTDC_PSRC_Sell: return str("sell");
+    default: return str("unknown");
+  }
+}
+
+template<class T>
+str tostr_TradeSource(T const* this_)
+{
+  switch(this_->TradeSource) {
+    case THOST_FTDC_TSRC_NORMAL: return str("normal");
+    case THOST_FTDC_TSRC_QUERY: return str("query");
+    default: return str("unknown");
+  }
+}
+
+template<class T>
+str tostr_OrderActionStatus(T const* this_)
+{
+  switch(this_->OrderActionStatus) {
+    case THOST_FTDC_OAS_Submitted: return str("submitted");
+    case THOST_FTDC_OAS_Accepted: return str("accepted");
+    case THOST_FTDC_OAS_Rejected: return str("rejected");
+    default: return str("unknown");
+  }
+}
+
 #pragma endregion // Getters
 
 BOOST_PYTHON_MODULE(_ctpclient)
@@ -508,25 +495,37 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("Delete", AF_Delete)
     .value("Modify", AF_Modify);
 
+  class_<M1Bar>("M1Bar")
+    .add_property("instrument_id", tostr(&M1Bar::InstrumentID))
+    .add_property("update_time", tostr(&M1Bar::UpdateTime))
+    .def_readonly("open", &M1Bar::OpenPrice)
+    .def_readonly("high", &M1Bar::HighestPrice)
+    .def_readonly("low", &M1Bar::LowestPrice)
+    .def_readonly("close", &M1Bar::ClosePrice)
+    .def_readonly("volume", &M1Bar::Volume)
+    .def_readonly("turnover", &M1Bar::Turnover)
+    .def_readonly("position", &M1Bar::Position)
+    ;
+
   class_<CThostFtdcRspUserLoginField>("UserLoginInfo")
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcRspUserLoginField>)
-    .add_property("login_time", tostr_TimeType<CThostFtdcRspUserLoginField, &CThostFtdcRspUserLoginField::LoginTime>)
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcRspUserLoginField>)
-    .add_property("user_id", tostr_UserID<CThostFtdcRspUserLoginField>)
+    .add_property("trading_day", tostr(&CThostFtdcRspUserLoginField::TradingDay))
+    .add_property("login_time", tostr(&CThostFtdcRspUserLoginField::LoginTime))
+    .add_property("broker_id", tostr(&CThostFtdcRspUserLoginField::BrokerID))
+    .add_property("user_id", tostr(&CThostFtdcRspUserLoginField::UserID))
     .add_property("system_name", tostr(&CThostFtdcRspUserLoginField::SystemName))
     .def_readonly("front_id", &CThostFtdcRspUserLoginField::FrontID)
     .def_readonly("session_id", &CThostFtdcRspUserLoginField::SessionID)
     .add_property("max_order_ref", tostr(&CThostFtdcRspUserLoginField::MaxOrderRef))
-    .add_property("SHFE_time", tostr_TimeType<CThostFtdcRspUserLoginField, &CThostFtdcRspUserLoginField::SHFETime>)
-    .add_property("DCE_time", tostr_TimeType<CThostFtdcRspUserLoginField, &CThostFtdcRspUserLoginField::DCETime>)
-    .add_property("CZCE_time", tostr_TimeType<CThostFtdcRspUserLoginField, &CThostFtdcRspUserLoginField::CZCETime>)
-    .add_property("FFEX_time", tostr_TimeType<CThostFtdcRspUserLoginField, &CThostFtdcRspUserLoginField::FFEXTime>)
-    .add_property("INE_time", tostr_TimeType<CThostFtdcRspUserLoginField, &CThostFtdcRspUserLoginField::INETime>)
+    .add_property("SHFE_time", tostr(&CThostFtdcRspUserLoginField::SHFETime))
+    .add_property("DCE_time", tostr(&CThostFtdcRspUserLoginField::DCETime))
+    .add_property("CZCE_time", tostr(&CThostFtdcRspUserLoginField::CZCETime))
+    .add_property("FFEX_time", tostr(&CThostFtdcRspUserLoginField::FFEXTime))
+    .add_property("INE_time", tostr(&CThostFtdcRspUserLoginField::INETime))
     ;
 
   class_<CThostFtdcUserLogoutField>("UserLogoutInfo")
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcUserLogoutField>)
-    .add_property("user_id", tostr_UserID<CThostFtdcUserLogoutField>)
+    .add_property("broker_id", tostr(&CThostFtdcUserLogoutField::BrokerID))
+    .add_property("user_id", tostr(&CThostFtdcUserLogoutField::UserID))
     ;
 
   class_<CThostFtdcRspInfoField>("ResponseInfo")
@@ -535,13 +534,13 @@ BOOST_PYTHON_MODULE(_ctpclient)
     ;
 
   class_<CThostFtdcSpecificInstrumentField>("SpecificInstrument")
-    .add_property("instrument_id", tostr_InstrumentID<CThostFtdcSpecificInstrumentField>)
+    .add_property("instrument_id", tostr(&CThostFtdcSpecificInstrumentField::InstrumentID))
     ;
 
   class_<CThostFtdcDepthMarketDataField>("MarketData")
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcDepthMarketDataField>)
-    .add_property("instrument_id", tostr_InstrumentID<CThostFtdcDepthMarketDataField>)
-    .add_property("exchange_id", tostr_ExchangeID<CThostFtdcDepthMarketDataField>)
+    .add_property("trading_day", tostr(&CThostFtdcDepthMarketDataField::TradingDay))
+    .add_property("instrument_id", tostr(&CThostFtdcDepthMarketDataField::InstrumentID))
+    .add_property("exchange_id", tostr(&CThostFtdcDepthMarketDataField::ExchangeID))
     // .add_property("exchange_inst_id", &CThostFtdcDepthMarketDataField::ExchangeInstID)
     .def_readonly("last_price", &CThostFtdcDepthMarketDataField::LastPrice)
     .def_readonly("pre_settlement_price", &CThostFtdcDepthMarketDataField::PreSettlementPrice)
@@ -559,7 +558,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("lower_limit_price", &CThostFtdcDepthMarketDataField::LowerLimitPrice)
     .def_readonly("pre_delta", &CThostFtdcDepthMarketDataField::PreDelta)
     .def_readonly("curr_delta", &CThostFtdcDepthMarketDataField::CurrDelta)
-    .add_property("update_time", tostr_TimeType<CThostFtdcDepthMarketDataField, &CThostFtdcDepthMarketDataField::UpdateTime>)
+    .add_property("update_time", tostr(&CThostFtdcDepthMarketDataField::UpdateTime))
     .def_readonly("update_millisec", &CThostFtdcDepthMarketDataField::UpdateMillisec)
     .def_readonly("bid_price1", &CThostFtdcDepthMarketDataField::BidPrice1)
     .def_readonly("bid_volume1", &CThostFtdcDepthMarketDataField::BidVolume1)
@@ -582,31 +581,31 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("ask_price5", &CThostFtdcDepthMarketDataField::AskPrice5)
     .def_readonly("ask_volume5", &CThostFtdcDepthMarketDataField::AskVolume5)
     .def_readonly("average_price", &CThostFtdcDepthMarketDataField::AveragePrice)
-    .add_property("action_day", tostr_DateType<CThostFtdcDepthMarketDataField, &CThostFtdcDepthMarketDataField::ActionDay>)
+    .add_property("action_day", tostr(&CThostFtdcDepthMarketDataField::ActionDay))
     ;
 
   class_<CThostFtdcSettlementInfoField>("SettlementInfo")
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcSettlementInfoField>)
+    .add_property("trading_day", tostr(&CThostFtdcSettlementInfoField::TradingDay))
     .def_readonly("settlement_id", &CThostFtdcSettlementInfoField::SettlementID)
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcSettlementInfoField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcSettlementInfoField>)
+    .add_property("broker_id", tostr(&CThostFtdcSettlementInfoField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcSettlementInfoField::InvestorID))
     .def_readonly("sequence_no", &CThostFtdcSettlementInfoField::SequenceNo)
     .add_property("content", tobytes(&CThostFtdcSettlementInfoField::Content))
-    .add_property("account_id", tostr_AccountID<CThostFtdcSettlementInfoField>)
-    .add_property("currency_id", tostr_CurrencyID<CThostFtdcSettlementInfoField>)
+    .add_property("account_id", tostr(&CThostFtdcSettlementInfoField::AccountID))
+    .add_property("currency_id", tostr(&CThostFtdcSettlementInfoField::CurrencyID))
     ;
 
   class_<CThostFtdcSettlementInfoConfirmField>("SettlementInfoConfirm")
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcSettlementInfoConfirmField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcSettlementInfoConfirmField>)
-    .add_property("confirm_date", tostr_DateType<CThostFtdcSettlementInfoConfirmField, &CThostFtdcSettlementInfoConfirmField::ConfirmDate>)
-    .add_property("confirm_time", tostr_TimeType<CThostFtdcSettlementInfoConfirmField, &CThostFtdcSettlementInfoConfirmField::ConfirmTime>)
-    .add_property("currency_id", tostr_CurrencyID<CThostFtdcSettlementInfoConfirmField>)
+    .add_property("broker_id", tostr(&CThostFtdcSettlementInfoConfirmField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcSettlementInfoConfirmField::InvestorID))
+    .add_property("confirm_date", tostr(&CThostFtdcSettlementInfoConfirmField::ConfirmDate))
+    .add_property("confirm_time", tostr(&CThostFtdcSettlementInfoConfirmField::ConfirmTime))
+    .add_property("currency_id", tostr(&CThostFtdcSettlementInfoConfirmField::CurrencyID))
     ;
 
   class_<CThostFtdcTradingAccountField>("TradingAccount")
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcTradingAccountField>)
-    .add_property("account_id", tostr_AccountID<CThostFtdcTradingAccountField>)
+    .add_property("broker_id", tostr(&CThostFtdcTradingAccountField::BrokerID))
+    .add_property("account_id", tostr(&CThostFtdcTradingAccountField::AccountID))
     .def_readonly("pre_mortgage", &CThostFtdcTradingAccountField::PreMortgage)
     .def_readonly("pre_credit", &CThostFtdcTradingAccountField::PreCredit)
     .def_readonly("pre_deposit", &CThostFtdcTradingAccountField::PreDeposit)
@@ -628,7 +627,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("available", &CThostFtdcTradingAccountField::Available)
     .def_readonly("withdraw_quota", &CThostFtdcTradingAccountField::WithdrawQuota)
     .def_readonly("reserve", &CThostFtdcTradingAccountField::Reserve)
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcTradingAccountField>)
+    .add_property("trading_day", tostr(&CThostFtdcTradingAccountField::TradingDay))
     .def_readonly("settlement_id", &CThostFtdcTradingAccountField::SettlementID)
     .def_readonly("credit", &CThostFtdcTradingAccountField::Credit)
     .def_readonly("mortgage", &CThostFtdcTradingAccountField::Mortgage)
@@ -636,7 +635,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("delivery_margin", &CThostFtdcTradingAccountField::DeliveryMargin)
     .def_readonly("exchange_delivery_margin", &CThostFtdcTradingAccountField::ExchangeDeliveryMargin)
     .def_readonly("reserve_balance", &CThostFtdcTradingAccountField::ReserveBalance)
-    .add_property("currency_id", tostr_CurrencyID<CThostFtdcTradingAccountField>)
+    .add_property("currency_id", tostr(&CThostFtdcTradingAccountField::CurrencyID))
     .def_readonly("pre_fund_mortgage_in", &CThostFtdcTradingAccountField::PreFundMortgageIn)
     .def_readonly("pre_fund_mortgage_out", &CThostFtdcTradingAccountField::PreFundMortgageOut)
     .def_readonly("fund_mortgage_in", &CThostFtdcTradingAccountField::FundMortgageIn)
@@ -657,9 +656,9 @@ BOOST_PYTHON_MODULE(_ctpclient)
     ;
 
   class_<CThostFtdcInvestorPositionField>("InvestorPosition")
-    .add_property("instrument_id", tostr_InstrumentID<CThostFtdcInvestorPositionField>)
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcInvestorPositionField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcInvestorPositionField>)
+    .add_property("instrument_id", tostr(&CThostFtdcInvestorPositionField::InstrumentID))
+    .add_property("broker_id", tostr(&CThostFtdcInvestorPositionField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcInvestorPositionField::InvestorID))
     .add_property("position_direction", tostr_PositionDirection<CThostFtdcInvestorPositionField>)
     .add_property("hedge_flag", tostr_HedgeFlag<CThostFtdcInvestorPositionField>)
     .add_property("position_date", InvestorPosition_PositionDate)
@@ -685,7 +684,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("position_profit", &CThostFtdcInvestorPositionField::PositionProfit)
     .def_readonly("pre_settlement_price", &CThostFtdcInvestorPositionField::PreSettlementPrice)
     .def_readonly("settlement_price", &CThostFtdcInvestorPositionField::SettlementPrice)
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcInvestorPositionField>)
+    .add_property("trading_day", tostr(&CThostFtdcInvestorPositionField::TradingDay))
     .def_readonly("settlement_id", &CThostFtdcInvestorPositionField::SettlementID)
     .def_readonly("open_cost", &CThostFtdcInvestorPositionField::OpenCost)
     .def_readonly("exchange_margin", &CThostFtdcInvestorPositionField::ExchangeMargin)
@@ -700,26 +699,26 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("strike_frozen", &CThostFtdcInvestorPositionField::StrikeFrozen)
     .def_readonly("strike_frozen_amount", &CThostFtdcInvestorPositionField::StrikeFrozenAmount)
     .def_readonly("abandon_frozen", &CThostFtdcInvestorPositionField::AbandonFrozen)
-    .add_property("exchange_id", tostr_ExchangeID<CThostFtdcInvestorPositionField>)
+    .add_property("exchange_id", tostr(&CThostFtdcInvestorPositionField::ExchangeID))
     .def_readonly("yd_strike_frozen", &CThostFtdcInvestorPositionField::YdStrikeFrozen)
     // .def_readonly("invest_unit_id", &CThostFtdcInvestorPositionField::InvestUnitID)
     ;
 
   class_<CThostFtdcInvestorPositionDetailField>("InvestorPositionDetail")
-    .add_property("instrument_id", tostr_InstrumentID<CThostFtdcInvestorPositionDetailField>)
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcInvestorPositionDetailField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcInvestorPositionDetailField>)
+    .add_property("instrument_id", tostr(&CThostFtdcInvestorPositionDetailField::InstrumentID))
+    .add_property("broker_id", tostr(&CThostFtdcInvestorPositionDetailField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcInvestorPositionDetailField::InvestorID))
     .add_property("hedge_flag", tostr_HedgeFlag<CThostFtdcInvestorPositionDetailField>)
-    .add_property("direction", tostr_Direction<CThostFtdcInvestorPositionDetailField>)
-    .add_property("open_date", tostr_DateType<CThostFtdcInvestorPositionDetailField, &CThostFtdcInvestorPositionDetailField::OpenDate>)
-    .add_property("trade_id", tostr_TradeID<CThostFtdcInvestorPositionDetailField>)
+    .add_property("direction", toenum_Direction<CThostFtdcInvestorPositionDetailField>)
+    .add_property("open_date", tostr(&CThostFtdcInvestorPositionDetailField::OpenDate))
+    .add_property("trade_id", tostr(&CThostFtdcInvestorPositionDetailField::TradeID))
     .def_readonly("volume", &CThostFtdcInvestorPositionDetailField::Volume)
     .def_readonly("open_price", &CThostFtdcInvestorPositionDetailField::OpenPrice)
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcInvestorPositionDetailField>)
+    .add_property("trading_day", tostr(&CThostFtdcInvestorPositionDetailField::TradingDay))
     .def_readonly("settlement_id", &CThostFtdcInvestorPositionDetailField::SettlementID)
     .add_property("trade_type", tostr_TradeType<CThostFtdcInvestorPositionDetailField>)
     .add_property("combine_instrument_id", tostr(&CThostFtdcInvestorPositionDetailField::CombInstrumentID))
-    .add_property("exchange_id", tostr_ExchangeID<CThostFtdcInvestorPositionDetailField>)
+    .add_property("exchange_id", tostr(&CThostFtdcInvestorPositionDetailField::ExchangeID))
     .def_readonly("close_profit_by_date", &CThostFtdcInvestorPositionDetailField::CloseProfitByDate)
     .def_readonly("close_profit_by_trade", &CThostFtdcInvestorPositionDetailField::CloseProfitByTrade)
     .def_readonly("position_profit_by_date", &CThostFtdcInvestorPositionDetailField::PositionProfitByDate)
@@ -736,19 +735,19 @@ BOOST_PYTHON_MODULE(_ctpclient)
     ;
 
   class_<CThostFtdcInputOrderField>("InputOrder")
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcInputOrderField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcInputOrderField>)
-    .add_property("instrument_id", tostr_InstrumentID<CThostFtdcInputOrderField>)
-    .add_property("order_ref", tostr_OrderRef<CThostFtdcInputOrderField>)
-    .add_property("user_id", tostr_UserID<CThostFtdcInputOrderField>)
+    .add_property("broker_id", tostr(&CThostFtdcInputOrderField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcInputOrderField::InvestorID))
+    .add_property("instrument_id", tostr(&CThostFtdcInputOrderField::InstrumentID))
+    .add_property("order_ref", tostr(&CThostFtdcInputOrderField::OrderRef))
+    .add_property("user_id", tostr(&CThostFtdcInputOrderField::UserID))
     .add_property("order_price_type", tostr_OrderPriceType<CThostFtdcInputOrderField>)
-    .add_property("direction", tostr_Direction<CThostFtdcInputOrderField>)
+    .add_property("direction", toenum_Direction<CThostFtdcInputOrderField>)
     .add_property("combine_offset_flag", tolist_CombOffsetFlag<CThostFtdcInputOrderField>)
     .add_property("combine_hedge_flag", tolist_CombHedgeFlag<CThostFtdcInputOrderField>)
     .def_readonly("limit_price", &CThostFtdcInputOrderField::LimitPrice)
     .def_readonly("volume_total_original", &CThostFtdcInputOrderField::VolumeTotalOriginal)
     .add_property("time_condition", tostr_TimeCondition<CThostFtdcInputOrderField>)
-    .add_property("GTD_date", tostr_DateType<CThostFtdcInputOrderField, &CThostFtdcInputOrderField::GTDDate>)
+    .add_property("GTD_date", tostr(&CThostFtdcInputOrderField::GTDDate))
     .add_property("volume_condition", tostr_VolumeCondition<CThostFtdcInputOrderField>)
     .def_readonly("min_volume", &CThostFtdcInputOrderField::MinVolume)
     .add_property("contingent_condition", tostr_ContingentCondition<CThostFtdcInputOrderField>)
@@ -759,47 +758,47 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("request_id", &CThostFtdcInputOrderField::RequestID)
     .def_readonly("user_force_close", &CThostFtdcInputOrderField::UserForceClose)
     .def_readonly("is_swap_order", &CThostFtdcInputOrderField::IsSwapOrder)
-    .add_property("exchange_id", tostr_ExchangeID<CThostFtdcInputOrderField>)
+    .add_property("exchange_id", tostr(&CThostFtdcInputOrderField::ExchangeID))
     // .def_readonly("invest_unit_id", &CThostFtdcInputOrderField::InvestUnitID)
-    .add_property("account_id", tostr_AccountID<CThostFtdcInputOrderField>)
-    .add_property("currency_id", tostr_CurrencyID<CThostFtdcInputOrderField>)
+    .add_property("account_id", tostr(&CThostFtdcInputOrderField::AccountID))
+    .add_property("currency_id", tostr(&CThostFtdcInputOrderField::CurrencyID))
     // .def_readonly("client_id", &CThostFtdcInputOrderField::ClientID)
     // .def_readonly("ip_address", &CThostFtdcInputOrderField::IPAddress)
     // .def_readonly("mac_address", &CThostFtdcInputOrderField::MacAddress)
     ;
 
   class_<CThostFtdcInputOrderActionField>("InputOrderAction")
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcInputOrderActionField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcInputOrderActionField>)
+    .add_property("broker_id", tostr(&CThostFtdcInputOrderActionField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcInputOrderActionField::InvestorID))
     .add_property("order_action_ref", tostr(&CThostFtdcInputOrderActionField::OrderActionRef))
-    .add_property("order_ref", tostr_OrderRef<CThostFtdcInputOrderActionField>)
+    .add_property("order_ref", tostr(&CThostFtdcInputOrderActionField::OrderActionRef))
     .def_readonly("request_id", &CThostFtdcInputOrderActionField::RequestID)
     .def_readonly("front_id", &CThostFtdcInputOrderActionField::FrontID)
     .def_readonly("session_id", &CThostFtdcInputOrderActionField::SessionID)
-    .add_property("exchange_id", tostr_ExchangeID<CThostFtdcInputOrderActionField>)
+    .add_property("exchange_id", tostr(&CThostFtdcInputOrderActionField::ExchangeID))
     .add_property("order_sys_id", tostr(&CThostFtdcInputOrderActionField::OrderSysID))
     .add_property("action_flag", tostr_ActionFlag<CThostFtdcInputOrderActionField>)
     .def_readonly("limit_price", &CThostFtdcInputOrderActionField::LimitPrice)
     .def_readonly("volume_change", &CThostFtdcInputOrderActionField::VolumeChange)
-    .add_property("user_id", tostr_UserID<CThostFtdcInputOrderActionField>)
-    .add_property("instrument_id", tostr_InstrumentID<CThostFtdcInputOrderActionField>)
+    .add_property("user_id", tostr(&CThostFtdcInputOrderActionField::UserID))
+    .add_property("instrument_id", tostr(&CThostFtdcInputOrderActionField::InstrumentID))
     // .def_readonly("invest_unit_id", &CThostFtdcInputOrderActionField::InvestUnitID)
     // .def_readonly("ip_address", &CThostFtdcInputOrderActionField::IPAddress)
     // .def_readonly("mac_address", &CThostFtdcInputOrderActionField::MacAddress)
     ;
 
   class_<CThostFtdcOrderField, boost::shared_ptr<CThostFtdcOrderField> >("Order")
-    .add_property("broker_id", tostr_BrokerID<CThostFtdcOrderField>)
-    .add_property("investor_id", tostr_InvestorID<CThostFtdcOrderField>)
-    .add_property("order_ref", tostr_OrderRef<CThostFtdcOrderField>)
-    .add_property("order_price_type", tostr_OrderPriceType<CThostFtdcOrderField>)
-    .add_property("direction", tostr_Direction<CThostFtdcOrderField>)
+    .add_property("broker_id", tostr(&CThostFtdcOrderField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcOrderField::InvestorID))
+    .add_property("order_ref", tostr(&CThostFtdcOrderField::OrderRef))
+    .add_property("price_type", tostr_OrderPriceType<CThostFtdcOrderField>)
+    .add_property("direction", toenum_Direction<CThostFtdcOrderField>)
     .add_property("combine_offset_flag", tolist_CombOffsetFlag<CThostFtdcOrderField>)
     .add_property("combine_hedge_flag", tolist_CombHedgeFlag<CThostFtdcOrderField>)
     .def_readonly("limit_price", &CThostFtdcOrderField::LimitPrice)
     .def_readonly("volume_total_original", &CThostFtdcOrderField::VolumeTotalOriginal)
     .add_property("time_condition", tostr_TimeCondition<CThostFtdcOrderField>)
-    .add_property("GTD_date", tostr_DateType<CThostFtdcOrderField, &CThostFtdcOrderField::GTDDate>)
+    .add_property("GTD_date", tostr(&CThostFtdcOrderField::GTDDate))
     .add_property("volume_condition", tostr_VolumeCondition<CThostFtdcOrderField>)
     .add_property("contingent_condition", tostr_ContingentCondition<CThostFtdcOrderField>)
     .add_property("force_close_reason", tostr_ForceCloseReason<CThostFtdcOrderField>)
@@ -807,27 +806,27 @@ BOOST_PYTHON_MODULE(_ctpclient)
     // .def_readonly("business_unit", &CThostFtdcOrderField::BusinessUnit)
     .def_readonly("request_id", &CThostFtdcOrderField::RequestID)
     .add_property("order_local_id", tostr(&CThostFtdcOrderField::OrderLocalID))
-    .add_property("exchange_id", tostr_ExchangeID<CThostFtdcOrderField>)
+    .add_property("exchange_id", tostr(&CThostFtdcOrderField::ExchangeID))
     // .def_readonly("participant_id", &CThostFtdcOrderField::ParticipantID)
     // .def_readonly("client_id", &CThostFtdcOrderField::ClientID)
     // .def_readonly("exchange_inst_id", &CThostFtdcOrderField::ExchangeInstID)
     .add_property("trader_id", tostr(&CThostFtdcOrderField::TraderID))
     // .def_readonly("install_id", &CThostFtdcOrderField::InstallID)
-    .add_property("order_status", tostr_OrderStatus<CThostFtdcOrderField>)
-    .add_property("order_submit_status", tostr_OrderSubmitStatus<CThostFtdcOrderField>)
+    .add_property("status", tostr_OrderStatus<CThostFtdcOrderField>)
+    .add_property("submit_status", tostr_OrderSubmitStatus<CThostFtdcOrderField>)
     .def_readonly("notify_sequence", &CThostFtdcOrderField::NotifySequence)
-    .add_property("trading_day", tostr_TradingDay<CThostFtdcOrderField>)
+    .add_property("trading_day", tostr(&CThostFtdcOrderField::TradingDay))
     .def_readonly("settlement_id", &CThostFtdcOrderField::SettlementID)
     .add_property("order_sys_id", tostr(&CThostFtdcOrderField::OrderSysID))
-    .add_property("order_source", tostr_OrderSource<CThostFtdcOrderField>)
-    .add_property("order_type", tostr_OrderType<CThostFtdcOrderField>)
+    .add_property("source", tostr_OrderSource<CThostFtdcOrderField>)
+    .add_property("type", tostr_OrderType<CThostFtdcOrderField>)
     .def_readonly("volume_traded", &CThostFtdcOrderField::VolumeTraded)
     .def_readonly("volume_total", &CThostFtdcOrderField::VolumeTotal)
-    .add_property("insert_date", tostr_DateType<CThostFtdcOrderField, &CThostFtdcOrderField::InsertDate>)
-    .add_property("insert_time", tostr_TimeType<CThostFtdcOrderField, &CThostFtdcOrderField::InsertTime>)
-    .add_property("active_time", tostr_TimeType<CThostFtdcOrderField, &CThostFtdcOrderField::ActiveTime>)
-    .add_property("suspend_time", tostr_TimeType<CThostFtdcOrderField, &CThostFtdcOrderField::SuspendTime>)
-    .add_property("cancel_time", tostr_TimeType<CThostFtdcOrderField, &CThostFtdcOrderField::CancelTime>)
+    .add_property("insert_date", tostr(&CThostFtdcOrderField::InsertDate))
+    .add_property("insert_time", tostr(&CThostFtdcOrderField::InsertTime))
+    .add_property("active_time", tostr(&CThostFtdcOrderField::ActiveTime))
+    .add_property("suspend_time", tostr(&CThostFtdcOrderField::SuspendTime))
+    .add_property("cancel_time", tostr(&CThostFtdcOrderField::CancelTime))
     // .add_property("active_trader_id", &CThostFtdcOrderField::ActiveTraderID)
     // .def_readonly("clearing_part_id", &CThostFtdcOrderField::ClearingPartID)
     .def_readonly("sequence_no", &CThostFtdcOrderField::SequenceNo)
@@ -843,75 +842,75 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("is_swap_order", &CThostFtdcOrderField::IsSwapOrder)
     .add_property("branch_id", tostr(&CThostFtdcOrderField::BranchID))
     // .def_readonly("invest_unit_id", &CThostFtdcOrderField::InvestUnitID)
-    .add_property("account_id", tostr_AccountID<CThostFtdcOrderField>)
-    .add_property("currency_id", tostr_CurrencyID<CThostFtdcOrderField>)
+    .add_property("account_id", tostr(&CThostFtdcOrderField::AccountID))
+    .add_property("currency_id", tostr(&CThostFtdcOrderField::CurrencyID))
     // .def_readonly("ip_address", &CThostFtdcOrderField::IPAddress)
     // .def_readonly("mac_address", &CThostFtdcOrderField::MacAddress)
     ;
 
   class_<CThostFtdcTradeField>("Trade")
-    .add_property("broker_id", &CThostFtdcTradeField::BrokerID)
-    .def_readonly("investor_id", &CThostFtdcTradeField::InvestorID)
-    .def_readonly("instrument_id", &CThostFtdcTradeField::InstrumentID)
-    .def_readonly("order_ref", &CThostFtdcTradeField::OrderRef)
-    .def_readonly("user_id", &CThostFtdcTradeField::UserID)
-    .def_readonly("exchange_id", &CThostFtdcTradeField::ExchangeID)
-    .def_readonly("trade_id", &CThostFtdcTradeField::TradeID)
-    .def_readonly("direction", &CThostFtdcTradeField::Direction)
-    .def_readonly("order_sys_id", &CThostFtdcTradeField::OrderSysID)
-    .def_readonly("participant_id", &CThostFtdcTradeField::ParticipantID)
-    .def_readonly("client_id", &CThostFtdcTradeField::ClientID)
-    .def_readonly("trading_role", &CThostFtdcTradeField::TradingRole)
-    .def_readonly("exchange_inst_id", &CThostFtdcTradeField::ExchangeInstID)
-    .def_readonly("offset_flag", &CThostFtdcTradeField::OffsetFlag)
-    .def_readonly("hedge_flag", &CThostFtdcTradeField::HedgeFlag)
+    .add_property("broker_id", tostr(&CThostFtdcTradeField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcTradeField::InvestorID))
+    .add_property("instrument_id", tostr(&CThostFtdcTradeField::InstrumentID))
+    .add_property("order_ref", tostr(&CThostFtdcTradeField::OrderRef))
+    .add_property("user_id", tostr(&CThostFtdcTradeField::UserID))
+    .add_property("exchange_id", tostr(&CThostFtdcTradeField::ExchangeID))
+    .add_property("trade_id", tostr(&CThostFtdcTradeField::TradeID))
+    .add_property("direction", toenum_Direction<CThostFtdcTradeField>)
+    .add_property("order_sys_id", tostr(&CThostFtdcTradeField::OrderSysID))
+    // .def_readonly("participant_id", tostr(&CThostFtdcTradeField::ParticipantID))
+    // .def_readonly("client_id", tostr(&CThostFtdcTradeField::ClientID))
+    .add_property("trading_role", tostr_TradingRole<CThostFtdcTradeField>)
+    // .add_property("exchange_inst_id", tostr(&CThostFtdcTradeField::ExchangeInstID))
+    .add_property("offset_flag", tostr_OffsetFlag<CThostFtdcTradeField>)
+    .add_property("hedge_flag", tostr_HedgeFlag<CThostFtdcTradeField>)
     .def_readonly("price", &CThostFtdcTradeField::Price)
     .def_readonly("volume", &CThostFtdcTradeField::Volume)
-    .def_readonly("trade_date", &CThostFtdcTradeField::TradeDate)
-    .def_readonly("trade_time", &CThostFtdcTradeField::TradeTime)
-    .def_readonly("trade_type", &CThostFtdcTradeField::TradeType)
-    .def_readonly("price_source", &CThostFtdcTradeField::PriceSource)
-    .def_readonly("trader_id", &CThostFtdcTradeField::TraderID)
-    .def_readonly("order_local_id", &CThostFtdcTradeField::OrderLocalID)
-    .def_readonly("clearing_part_id", &CThostFtdcTradeField::ClearingPartID)
-    .def_readonly("business_unit", &CThostFtdcTradeField::BusinessUnit)
+    .add_property("trade_date", tostr(&CThostFtdcTradeField::TradeDate))
+    .add_property("trade_time", tostr(&CThostFtdcTradeField::TradeTime))
+    .add_property("trade_type", tostr_TradeType<CThostFtdcTradeField>)
+    .add_property("price_source", tostr_PriceSource<CThostFtdcTradeField>)
+    .add_property("trader_id", tostr(&CThostFtdcTradeField::TraderID))
+    .add_property("order_local_id", tostr(&CThostFtdcTradeField::OrderLocalID))
+    // .add_property("clearing_part_id", &CThostFtdcTradeField::ClearingPartID)
+    // .add_property("business_unit", &CThostFtdcTradeField::BusinessUnit)
     .def_readonly("sequence_no", &CThostFtdcTradeField::SequenceNo)
-    .def_readonly("trading_day", &CThostFtdcTradeField::TradingDay)
+    .add_property("trading_day", tostr(&CThostFtdcTradeField::TradingDay))
     .def_readonly("settlement_id", &CThostFtdcTradeField::SettlementID)
     .def_readonly("broker_order_seq", &CThostFtdcTradeField::BrokerOrderSeq)
-    .def_readonly("trade_source", &CThostFtdcTradeField::TradeSource)
-    .def_readonly("invest_unit_id", &CThostFtdcTradeField::InvestUnitID)
+    .add_property("trade_source", tostr_TradeSource<CThostFtdcTradeField>)
+    // .add_property("invest_unit_id", &CThostFtdcTradeField::InvestUnitID)
     ;
 
   class_<CThostFtdcOrderActionField>("OrderAction")
-    .def_readonly("broker_id", &CThostFtdcOrderActionField::BrokerID)
-    .def_readonly("investor_id", &CThostFtdcOrderActionField::InvestorID)
-    .def_readonly("order_action_ref", &CThostFtdcOrderActionField::OrderActionRef)
-    .def_readonly("order_ref", &CThostFtdcOrderActionField::OrderRef)
+    .add_property("broker_id", tostr(&CThostFtdcOrderActionField::BrokerID))
+    .add_property("investor_id", tostr(&CThostFtdcOrderActionField::InvestorID))
+    .add_property("order_action_ref", tostr(&CThostFtdcOrderActionField::OrderActionRef))
+    .add_property("order_ref", tostr(&CThostFtdcOrderActionField::OrderRef))
     .def_readonly("front_id", &CThostFtdcOrderActionField::FrontID)
     .def_readonly("session_id", &CThostFtdcOrderActionField::SessionID)
-    .def_readonly("exchange_id", &CThostFtdcOrderActionField::ExchangeID)
-    .def_readonly("order_sys_id", &CThostFtdcOrderActionField::OrderSysID)
-    .def_readonly("action_flag", &CThostFtdcOrderActionField::ActionFlag)
+    .add_property("exchange_id", tostr(&CThostFtdcOrderActionField::ExchangeID))
+    .add_property("order_sys_id", tostr(&CThostFtdcOrderActionField::OrderSysID))
+    .add_property("action_flag", tostr_ActionFlag<CThostFtdcOrderActionField>)
     .def_readonly("limit_price", &CThostFtdcOrderActionField::LimitPrice)
     .def_readonly("volume_change", &CThostFtdcOrderActionField::VolumeChange)
-    .def_readonly("action_date", &CThostFtdcOrderActionField::ActionDate)
-    .def_readonly("action_time", &CThostFtdcOrderActionField::ActionTime)
-    .def_readonly("trader_id", &CThostFtdcOrderActionField::TraderID)
-    .def_readonly("install_id", &CThostFtdcOrderActionField::InstallID)
-    .def_readonly("order_local_id", &CThostFtdcOrderActionField::OrderLocalID)
-    .def_readonly("action_local_id", &CThostFtdcOrderActionField::ActionLocalID)
-    .def_readonly("participant_id", &CThostFtdcOrderActionField::ParticipantID)
-    .def_readonly("client_id", &CThostFtdcOrderActionField::ClientID)
-    .def_readonly("business_unit", &CThostFtdcOrderActionField::BusinessUnit)
-    .def_readonly("order_action_status", &CThostFtdcOrderActionField::OrderActionStatus)
-    .def_readonly("user_id", &CThostFtdcOrderActionField::UserID)
-    .def_readonly("status_msg", &CThostFtdcOrderActionField::StatusMsg)
-    .def_readonly("instrument_id", &CThostFtdcOrderActionField::InstrumentID)
-    .def_readonly("branch_id", &CThostFtdcOrderActionField::BranchID)
-    .def_readonly("invest_unit_id", &CThostFtdcOrderActionField::InvestUnitID)
-    .def_readonly("ip_address", &CThostFtdcOrderActionField::IPAddress)
-    .def_readonly("mac_address", &CThostFtdcOrderActionField::MacAddress)
+    .add_property("action_date", tostr(&CThostFtdcOrderActionField::ActionDate))
+    .add_property("action_time", tostr(&CThostFtdcOrderActionField::ActionTime))
+    .add_property("trader_id", tostr(&CThostFtdcOrderActionField::TraderID))
+    // .add_property("install_id", &CThostFtdcOrderActionField::InstallID)
+    .add_property("order_local_id", tostr(&CThostFtdcOrderActionField::OrderLocalID))
+    .add_property("action_local_id", tostr(&CThostFtdcOrderActionField::ActionLocalID))
+    // .add_property("participant_id", &CThostFtdcOrderActionField::ParticipantID)
+    // .add_property("client_id", &CThostFtdcOrderActionField::ClientID)
+    // .add_property("business_unit", &CThostFtdcOrderActionField::BusinessUnit)
+    .add_property("order_action_status", tostr_OrderActionStatus<CThostFtdcOrderActionField>)
+    .add_property("user_id", tostr(&CThostFtdcOrderActionField::UserID))
+    .add_property("status_msg", tobytes(&CThostFtdcOrderActionField::StatusMsg))
+    .add_property("instrument_id", tostr(&CThostFtdcOrderActionField::InstrumentID))
+    .add_property("branch_id", tostr(&CThostFtdcOrderActionField::BranchID))
+    // .add_property("invest_unit_id", &CThostFtdcOrderActionField::InvestUnitID)
+    // .add_property("ip_address", &CThostFtdcOrderActionField::IPAddress)
+    // .add_property("mac_address", &CThostFtdcOrderActionField::MacAddress)
     ;
 
   class_<CtpClientWrap, boost::noncopyable>("CtpClient", init<std::string, std::string, std::string, std::string, std::string>())
@@ -939,6 +938,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_rtn_market_data", pure_virtual(&CtpClient::OnRtnMarketData))
     .def("on_tick", pure_virtual(&CtpClient::OnTick))
     .def("on_1min", pure_virtual(&CtpClient::On1Min))
+    .def("on_1min_tick", pure_virtual(&CtpClient::On1MinTick))
 
     .def("td_login", &CtpClient::TdLogin)
     .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
@@ -951,7 +951,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("insert_order", &CtpClient::InsertOrder,
       (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),
        arg("volume"), arg("order_price_type")=OPT_LimitPrice,
-       arg("hedge_flag")=HF_Speculation, arg("time_condition")=TC_GFS,
+       arg("hedge_flag")=HF_Speculation, arg("time_condition")=TC_GFD,
        arg("volume_condition")=VC_AV, arg("contingent_condition")=CC_Immediately,
        arg("min_volume")=1, arg("stop_price")=0.0,
        arg("is_auto_suspend")=false, arg("user_force_close")=false,
@@ -967,13 +967,13 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_td_user_login", pure_virtual(&CtpClient::OnTdUserLogin))
     .def("on_td_user_logout", pure_virtual(&CtpClient::OnTdUserLogout))
     .def("on_settlement_info_confirm", pure_virtual(&CtpClient::OnRspSettlementInfoConfirm))
-    .def("on_rsp_order_insert", pure_virtual(&CtpClient::OnRspOrderInsert))
     .def("on_rsp_order_action", pure_virtual(&CtpClient::OnRspOrderAction))
-    .def("on_err_order_insert", pure_virtual(&CtpClient::OnErrRtnOrderInsert))
-    .def("on_err_order_action", pure_virtual(&CtpClient::OnErrRtnOrderAction))
+    .def("on_err_order_insert", pure_virtual(&CtpClient::OnErrOrderInsert))
+    .def("on_err_order_action", pure_virtual(&CtpClient::OnErrOrderAction))
     .def("on_rtn_order", pure_virtual(&CtpClient::OnRtnOrder))
     .def("on_rtn_trade", pure_virtual(&CtpClient::OnRtnTrade))
     .def("on_rsp_order", pure_virtual(&CtpClient::OnRspQryOrder))
+    .def("on_rsp_trade", pure_virtual(&CtpClient::OnRspQryTrade))
     .def("on_rsp_trading_account", pure_virtual(&CtpClient::OnRspQryTradingAccount))
     .def("on_rsp_investor_position", pure_virtual(&CtpClient::OnRspQryInvestorPosition))
     .def("on_rsp_investor_position_detail", pure_virtual(&CtpClient::OnRspQryInvestorPositionDetail))

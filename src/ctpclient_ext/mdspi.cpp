@@ -59,40 +59,43 @@ void MdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificIns
 
 void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
-    std::cerr << "InstrumentID: " << pDepthMarketData->InstrumentID << std::endl;
-    
     char tickTime[16] = { 0 };
     snprintf(tickTime, sizeof tickTime, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
 
     M1Bar bar;
-    bar.time = std::string(pDepthMarketData->UpdateTime, pDepthMarketData->UpdateTime+6);;
+    memcpy(bar.InstrumentID, pDepthMarketData->InstrumentID, sizeof bar.InstrumentID);
+    memset(bar.UpdateTime, 0, sizeof bar.UpdateTime);
+    memcpy(bar.UpdateTime, pDepthMarketData->UpdateTime, 5);
 
-    auto instrumentId = pDepthMarketData->InstrumentID;
+    std::string m1_now(bar.UpdateTime);
+    std::string instrumentId(pDepthMarketData->InstrumentID);
     auto price = pDepthMarketData->LastPrice;
-    auto volume = pDepthMarketData->Volume;
-    bar.volume = volume;
+    bar.Volume = pDepthMarketData->Volume;
+    bar.Turnover = pDepthMarketData->Turnover;
+    bar.Position = pDepthMarketData->OpenInterest;
 
-    bool update1min = false;
     auto iter = _m1Bars.find(instrumentId);
-    if (iter == _m1Bars.end() || iter->second.time != bar.time) {
-        bar.priceOpen = bar.priceHigh = bar.priceLow = bar.priceClose = price;
-        update1min = iter->second.time != bar.time;
+    if (iter == _m1Bars.end() || std::string(iter->second.UpdateTime) != m1_now) {
+        bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
     } else {
-        bar.priceHigh = price > iter->second.priceHigh ? price : iter->second.priceHigh;
-        bar.priceLow = price < iter->second.priceLow ? price : iter->second.priceLow;
-        bar.priceClose = price;
+        auto &b = iter->second;
+        bar.HighestPrice = price > b.HighestPrice ? price : b.HighestPrice;
+        bar.LowestPrice = price < b.LowestPrice ? price : b.LowestPrice;
+        bar.ClosePrice = price;
     }
+
+    if (iter != _m1Bars.end() && std::string(iter->second.UpdateTime) != m1_now) {
+        _client->On1Min(iter->second);
+    }
+
     _m1Bars[pDepthMarketData->InstrumentID] = bar;
 
     _client->OnRtnMarketData(pDepthMarketData);
-    _client->OnTick(instrumentId, price, volume, tickTime);
-
-    if (update1min) {
-        _client->On1Min(instrumentId, bar.priceOpen, bar.priceHigh, bar.priceLow, bar.priceClose, bar.volume, bar.time);
-    }
+    _client->OnTick(instrumentId, pDepthMarketData->LastPrice, pDepthMarketData->Volume, tickTime);
+    _client->On1MinTick(bar);
 }
 
-void MdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void MdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
 {
-    _client->OnMdError(pRspInfo, nRequestID, bIsLast);
+    _client->OnMdError(pRspInfo);
 }

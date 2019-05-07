@@ -20,22 +20,22 @@
 #include "ThostFtdcUserApiStruct.h"
 #include "ThostFtdcUserApiDataType.h"
 
+struct M1Bar {
+	TThostFtdcInstrumentIDType InstrumentID;
+	TThostFtdcTimeType  UpdateTime;
+	TThostFtdcPriceType OpenPrice;
+	TThostFtdcPriceType HighestPrice;
+	TThostFtdcPriceType LowestPrice;
+	TThostFtdcPriceType ClosePrice;
+	TThostFtdcVolumeType Volume;
+	TThostFtdcLargeVolumeType Position;
+	TThostFtdcMoneyType	Turnover;
+};
+
 class CtpClient;
 class MdSpi : public CThostFtdcMdSpi
 {
     CtpClient *_client;
-	struct M1Bar {
-		M1Bar() = default;
-		M1Bar(const M1Bar&) = default;
-		M1Bar(M1Bar&&) = default;
-		M1Bar& operator=(const M1Bar&) = default;
-		M1Bar& operator=(M1Bar&&) = default;
-		~M1Bar() = default;
-
-		std::string time;
-		float priceOpen, priceHigh, priceLow, priceClose;
-		int volume;
-	};
 	std::map<std::string, M1Bar> _m1Bars;
 
 public:

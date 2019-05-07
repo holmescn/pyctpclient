@@ -16,6 +16,7 @@
 #include <cstring>
 #include <chrono>
 #include <string>
+#include <thread>
 #include <iostream>
 #include <boost/filesystem.hpp>
 #include "ThostFtdcMdApi.h"
@@ -113,13 +114,14 @@ void CtpClient::Run()
 		_tdApi->Init();
 	}
 
-	auto future = _joinLock.get_future();
-	future.wait_for(std::chrono::hours(24));
+	auto future = _joinPromise.get_future();
+	// future.wait_for(std::chrono::hours(24));
+	future.wait_for(std::chrono::seconds(120));
 }
 
 void CtpClient::Exit()
 {
-	_joinLock.set_value();
+	_joinPromise.set_value();
 }
 
 CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
@@ -263,17 +265,24 @@ void CtpClientWrap::OnTick(std::string instrumentId, float price, int volume, st
 	}
 }
 
-void CtpClientWrap::On1Min(std::string instrumentId, float priceOpen, float priceHigh, float priceLow, float priceClose, int volume, std::string time)
+void CtpClientWrap::On1Min(M1Bar &bar)
 {
 	if (override fn = get_override("on_1min")) {
-		fn(instrumentId, priceOpen, priceHigh, priceLow, priceClose, volume, time);
+		fn(bar);
 	}
 }
 
-void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::On1MinTick(M1Bar &bar)
+{
+	if (override fn = get_override("on_1min_tick")) {
+		fn(bar);
+	}
+}
+
+void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_md_error")) {
-		fn(pRspInfo, nRequestID, bIsLast);
+		fn(pRspInfo);
 	} else {
 		std::cerr << "Market Data Error: " << pRspInfo->ErrorID << std::endl;
 	}
@@ -308,66 +317,97 @@ void CtpClient::ConfirmSettlementInfo()
 
 void CtpClient::QueryOrder()
 {
-	CThostFtdcQryOrderField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
-	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
-	assert_request(_tdApi->ReqQryOrder(&req, 0));
+	_queryTick += std::chrono::milliseconds(1200);
+	std::async(std::launch::async, [this](std::chrono::steady_clock::time_point until) {
+		std::this_thread::sleep_until(until);
+		
+		CThostFtdcQryOrderField req;
+		memset(&req, 0, sizeof req);
+		strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+		strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+
+		assert_request(_tdApi->ReqQryOrder(&req, 0));
+	}, _queryTick);
 }
 
 void CtpClient::QueryTrade()
 {
-	CThostFtdcQryTradeField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
-	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
-	assert_request(_tdApi->ReqQryTrade(&req, 0));
+	_queryTick += std::chrono::milliseconds(1200);
+	std::async(std::launch::async, [this](std::chrono::steady_clock::time_point until) {
+		std::this_thread::sleep_until(until);
+		
+		CThostFtdcQryTradeField req;
+		memset(&req, 0, sizeof req);
+		strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+		strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+		assert_request(_tdApi->ReqQryTrade(&req, 0));
+	}, _queryTick);
 }
 
 void CtpClient::QueryTradingAccount()
 {
-	CThostFtdcQryTradingAccountField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
-	strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
-	strncpy(req.CurrencyID, "CNY", sizeof req.CurrencyID);
+	_queryTick += std::chrono::milliseconds(1200);
+	std::async(std::launch::async, [this](std::chrono::steady_clock::time_point until) {
+		std::this_thread::sleep_until(until);
+		
+		CThostFtdcQryTradingAccountField req;
+		memset(&req, 0, sizeof req);
+		strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+		strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+		strncpy(req.CurrencyID, "CNY", sizeof req.CurrencyID);
 
-	assert_request(_tdApi->QueryTradingAccount(&req, 0));
+		assert_request(_tdApi->QueryTradingAccount(&req, 0));
+	}, _queryTick);
 }
 
 void CtpClient::QueryInvestorPosition()
 {
-	CThostFtdcQryInvestorPositionField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
-	strncpy(req.InstrumentID, _userId.c_str(), sizeof req.InvestorID);
+	_queryTick += std::chrono::milliseconds(1200);
+	std::async(std::launch::async, [this](std::chrono::steady_clock::time_point until) {
+		std::this_thread::sleep_until(until);
+		
+		CThostFtdcQryInvestorPositionField req;
+		memset(&req, 0, sizeof req);
+		strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+		strncpy(req.InstrumentID, _userId.c_str(), sizeof req.InvestorID);
 
-	// 不填写合约则返回所有持仓
-	strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
+		// 不填写合约则返回所有持仓
+		strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
 
-	assert_request(_tdApi->QueryInvestorPosition(&req, 0));
+		assert_request(_tdApi->QueryInvestorPosition(&req, 0));
+	}, _queryTick);
 }
 
 void CtpClient::QueryInvestorPositionDetail()
 {
-	CThostFtdcQryInvestorPositionDetailField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
-	strncpy(req.InstrumentID, _userId.c_str(), sizeof req.InvestorID);
+	_queryTick += std::chrono::milliseconds(1200);
+	std::async(std::launch::async, [this](std::chrono::steady_clock::time_point until) {
+		std::this_thread::sleep_until(until);
+		
+		CThostFtdcQryInvestorPositionDetailField req;
+		memset(&req, 0, sizeof req);
+		strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+		strncpy(req.InstrumentID, _userId.c_str(), sizeof req.InvestorID);
 
-	// 不填写合约则返回所有持仓
-	strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
+		// 不填写合约则返回所有持仓
+		strncpy(req.InstrumentID, "", sizeof req.InstrumentID);
 
-	assert_request(_tdApi->ReqQryInvestorPositionDetail(&req, 0));
+		assert_request(_tdApi->ReqQryInvestorPositionDetail(&req, 0));
+	}, _queryTick);
 }
 
 void CtpClient::QueryMarketData(std::string instrumentId)
 {
-	CThostFtdcQryDepthMarketDataField req;
-	memset(&req, 0, sizeof req);
-	strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
+	_queryTick += std::chrono::milliseconds(1200);
+	std::async(std::launch::async, [this](std::string instrumentId, std::chrono::steady_clock::time_point until) {
+		std::this_thread::sleep_until(until);
+		
+		CThostFtdcQryDepthMarketDataField req;
+		memset(&req, 0, sizeof req);
+		strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
 
-	assert_request(_tdApi->ReqQryDepthMarketData(&req, 0));
+		assert_request(_tdApi->ReqQryDepthMarketData(&req, 0));
+	}, instrumentId, _queryTick);
 }
 
 void CtpClient::QuerySettlementInfo()
@@ -713,13 +753,6 @@ void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmFi
 	}
 }
 
-void CtpClientWrap::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
-{
-	if (override fn = get_override("on_rsp_order_insert")) {
-		fn(pInputOrder, pRspInfo);
-	}
-}
-
 void CtpClientWrap::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_rsp_order_action")) {
@@ -727,14 +760,14 @@ void CtpClientWrap::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 	}
 }
 
-void CtpClientWrap::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_err_order_insert")) {
 		fn(pInputOrder, pRspInfo);
 	}
 }
 
-void CtpClientWrap::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_err_order_action")) {
 		fn(pOrderAction, pRspInfo);
@@ -755,10 +788,10 @@ void CtpClientWrap::OnRtnTrade(CThostFtdcTradeField *pTrade)
 	}
 }
 
-void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_td_error")) {
-		fn(pRspInfo, nRequestID, bIsLast);
+		fn(pRspInfo);
 	} else {
 		std::cerr << "Trader Error: " << pRspInfo->ErrorID << std::endl;
 	}

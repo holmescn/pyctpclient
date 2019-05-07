@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 #pragma once
+#include <chrono>
 #include <future>
 #include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 #include "ThostFtdcUserApiStruct.h"
 
+struct M1Bar;
 class MdSpi;
 class TraderSpi;
 class CThostFtdcMdApi;
@@ -80,7 +82,6 @@ enum OrderActionFlag { AF_Delete, AF_Modify };
 
 class CtpClient
 {
-protected:
     MdSpi *_mdSpi = nullptr;
     CThostFtdcMdApi *_mdApi = nullptr;
     TraderSpi *_tdSpi = nullptr;
@@ -91,8 +92,11 @@ protected:
     std::string _brokerId;
     std::string _userId;
     std::string _password;
+    std::promise<void> _joinPromise;
+    std::chrono::steady_clock::time_point _queryTick = std::chrono::steady_clock::now();
+
+protected:
     boost::python::list _instrumentIds;
-    std::promise<void> _joinLock;
 
 public:
     CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
@@ -141,8 +145,9 @@ public:
     virtual void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
     virtual void OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) = 0;
     virtual void OnTick(std::string instrumentId, float price, int volume, std::string time) = 0;
-    virtual void On1Min(std::string instrumentId, float priceOpen, float priceHigh, float priceLow, float priceClose, int volume, std::string time) = 0;
-	virtual void OnMdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+    virtual void On1Min(M1Bar& bar) = 0;
+    virtual void On1MinTick(M1Bar& bar) = 0;
+	virtual void OnMdError(CThostFtdcRspInfoField *pRspInfo) = 0;
 
 public:
     // TraderApi
@@ -190,13 +195,12 @@ public:
 	virtual void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo) = 0;
-	virtual void OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
-	virtual void OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) = 0;
-	virtual void OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnErrOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder) = 0;
 	virtual void OnRtnTrade(CThostFtdcTradeField *pTrade) = 0;
-	virtual void OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
+	virtual void OnTdError(CThostFtdcRspInfoField *pRspInfo) = 0;
 
     virtual void OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
     virtual void OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
@@ -222,21 +226,21 @@ public:
     void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;
     void OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) override;
     void OnTick(std::string instrumentId, float price, int volume, std::string time) override;
-    void On1Min(std::string instrumentId, float priceOpen, float priceHigh, float priceLow, float priceClose, int volume, std::string time) override;
-	void OnMdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+    void On1Min(M1Bar &bar) override;
+    void On1MinTick(M1Bar &bar) override;
+	void OnMdError(CThostFtdcRspInfoField *pRspInfo) override;
 
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
 	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo) override;
-	void OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo) override;
-	void OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) override;
-	void OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) override;
+	void OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) override;
+	void OnErrOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder) override;
 	void OnRtnTrade(CThostFtdcTradeField *pTrade) override;
-	void OnTdError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
+	void OnTdError(CThostFtdcRspInfoField *pRspInfo) override;
 
     void OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
     void OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;

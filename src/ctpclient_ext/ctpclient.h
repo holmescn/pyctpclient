@@ -148,6 +148,8 @@ public:
     virtual void On1MinTick(M1Bar& bar) = 0;
 	virtual void OnMdError(CThostFtdcRspInfoField *pRspInfo) = 0;
 
+    virtual void OnTimer1S(std::string time) = 0;
+
 public:
     // TraderApi
     void TdLogin();
@@ -227,6 +229,8 @@ public:
     void On1Min(M1Bar &bar) override;
     void On1MinTick(M1Bar &bar) override;
 	void OnMdError(CThostFtdcRspInfoField *pRspInfo) override;
+    
+    void OnTimer1S(std::string time) override;
 
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;

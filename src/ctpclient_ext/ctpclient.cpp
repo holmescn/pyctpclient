@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <ctime>
 #include <csignal>
 #include <cstring>
 #include <chrono>
@@ -31,6 +32,7 @@
 using namespace boost::python;
 
 std::promise<void> g_joinPromise;
+std::shared_future<void> g_future(g_joinPromise.get_future());
 
 void signal_handler(int signal)
 {
@@ -122,12 +124,21 @@ void CtpClient::Run()
 		_tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
 		_tdApi->Init();
 	}
+
+	std::thread([this](std::shared_future<void> future) {
+    	char str[64] = { 0 };
+		while (future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+			std::time_t t = std::time(nullptr);
+    		if (std::strftime(str, sizeof str, "%F %T", std::localtime(&t))) {
+				OnTimer1S(str);
+    		}
+		}
+	}, g_future).detach();
 }
 
 void CtpClient::Join()
 {
-	auto future = g_joinPromise.get_future();
-	future.wait_for(std::chrono::hours(24));
+	g_future.wait_for(std::chrono::hours(24));
 }
 
 void CtpClient::Exit()
@@ -296,6 +307,13 @@ void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo)
 		fn(pRspInfo);
 	} else {
 		std::cerr << "Market Data Error: " << pRspInfo->ErrorID << std::endl;
+	}
+}
+
+void CtpClientWrap::OnTimer1S(std::string time)
+{
+	if (override fn = get_override("on_timer_1s")) {
+		fn(time);
 	}
 }
 
@@ -761,13 +779,6 @@ void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmFi
 		fn(pSettlementInfoConfirm, pRspInfo);
 	} else {
 		std::cerr << "SettlementInfoConfirm: " << pRspInfo->ErrorID << std::endl;
-	}
-}
-
-void CtpClientWrap::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo)
-{
-	if (override fn = get_override("on_rsp_order_action")) {
-		fn(pInputOrderAction, pRspInfo);
 	}
 }
 

@@ -1,5 +1,10 @@
 # pyctpclient Change History
 
+## 0.1.3a0
+
+1. Compute volume and turnover in one minute
+2. Add 1s timer.
+
 ## 0.1.2a0
 
 1. Add `join` for client.

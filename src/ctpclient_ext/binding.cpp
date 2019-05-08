@@ -940,6 +940,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_tick", pure_virtual(&CtpClient::OnTick))
     .def("on_1min", pure_virtual(&CtpClient::On1Min))
     .def("on_1min_tick", pure_virtual(&CtpClient::On1MinTick))
+    .def("on_timer_1s", pure_virtual(&CtpClient::OnTimer1S))
 
     .def("td_login", &CtpClient::TdLogin)
     .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)

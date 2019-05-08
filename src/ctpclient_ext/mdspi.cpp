@@ -70,21 +70,28 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketDat
     std::string m1_now(bar.UpdateTime);
     std::string instrumentId(pDepthMarketData->InstrumentID);
     auto price = pDepthMarketData->LastPrice;
-    bar.Volume = pDepthMarketData->Volume;
-    bar.Turnover = pDepthMarketData->Turnover;
     bar.Position = pDepthMarketData->OpenInterest;
 
     auto iter = _m1Bars.find(instrumentId);
-    if (iter == _m1Bars.end() || std::string(iter->second.UpdateTime) != m1_now) {
-        bar.OpenPrice = price;
-        bar.HighestPrice = price;
-        bar.LowestPrice = price;
-        bar.ClosePrice = price;
+    if (iter == _m1Bars.end()) {
+        bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
     } else {
         auto &b = iter->second;
-        bar.HighestPrice = price > b.HighestPrice ? price : b.HighestPrice;
-        bar.LowestPrice = price < b.LowestPrice ? price : b.LowestPrice;
-        bar.ClosePrice = price;
+        if (m1_now == b.UpdateTime) {
+            bar.OpenPrice = b.OpenPrice;
+            bar.HighestPrice = price > b.HighestPrice ? price : b.HighestPrice;
+            bar.LowestPrice = price < b.LowestPrice ? price : b.LowestPrice;
+            bar.ClosePrice = price;
+            bar.PreVolume = b.PreVolume;
+            bar.PreTurnover = b.PreTurnover;
+        } else {
+            bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
+            bar.PreVolume = b.Volume;
+            bar.PreTurnover = b.Turnover;
+        }
+
+        bar.Volume = pDepthMarketData->Volume - b.PreVolume;
+        bar.Turnover = pDepthMarketData->Turnover - b.PreTurnover;
     }
 
     if (iter != _m1Bars.end() && std::string(iter->second.UpdateTime) != m1_now) {

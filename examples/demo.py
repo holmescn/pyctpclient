@@ -2,6 +2,9 @@
 from pyctpclient import CtpClient, Direction, OffsetFlag
 
 class Client(CtpClient):
+    def on_timer_1s(self, time):
+        print(time)
+
     def on_tick(self, instrument_id, price, volume, time):
         print(instrument_id, price, volume)
 
@@ -37,7 +40,7 @@ class Client(CtpClient):
     def on_rsp_order_action(self, input_order_action, rsp_info):
         print("order action")
 
-    def on_err_order_action(self, order_action, rsp_info):
+    def on_err_order_action(self, input_order_action, order_action, rsp_info):
         print("error order action")
 
     def on_md_error(self, rsp_info):

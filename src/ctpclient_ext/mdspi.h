@@ -27,8 +27,10 @@ struct M1Bar {
 	TThostFtdcPriceType HighestPrice;
 	TThostFtdcPriceType LowestPrice;
 	TThostFtdcPriceType ClosePrice;
+	TThostFtdcVolumeType PreVolume;
 	TThostFtdcVolumeType Volume;
 	TThostFtdcLargeVolumeType Position;
+	TThostFtdcMoneyType	PreTurnover;
 	TThostFtdcMoneyType	Turnover;
 };
 

@@ -76,7 +76,10 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketDat
 
     auto iter = _m1Bars.find(instrumentId);
     if (iter == _m1Bars.end() || std::string(iter->second.UpdateTime) != m1_now) {
-        bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
+        bar.OpenPrice = price;
+        bar.HighestPrice = price;
+        bar.LowestPrice = price;
+        bar.ClosePrice = price;
     } else {
         auto &b = iter->second;
         bar.HighestPrice = price > b.HighestPrice ? price : b.HighestPrice;

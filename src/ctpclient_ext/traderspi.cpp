@@ -64,7 +64,7 @@ void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostF
 
 void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
 {
-    _client->OnRspOrderAction(pInputOrderAction, pRspInfo);
+    _client->OnErrOrderAction(pInputOrderAction, nullptr, pRspInfo);
 }
 
 void TraderSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
@@ -74,7 +74,7 @@ void TraderSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTho
 
 void TraderSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
-    _client->OnErrOrderAction(pOrderAction, pRspInfo);
+    _client->OnErrOrderAction(nullptr, pOrderAction, pRspInfo);
 }
 
 void TraderSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)

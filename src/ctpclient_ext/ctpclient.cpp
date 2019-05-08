@@ -122,7 +122,10 @@ void CtpClient::Run()
 		_tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
 		_tdApi->Init();
 	}
+}
 
+void CtpClient::Join()
+{
 	auto future = g_joinPromise.get_future();
 	future.wait_for(std::chrono::hours(24));
 }
@@ -775,10 +778,10 @@ void CtpClientWrap::OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 	}
 }
 
-void CtpClientWrap::OnErrOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_err_order_action")) {
-		fn(pOrderAction, pRspInfo);
+		fn(pInputOrderAction, pOrderAction, pRspInfo);
 	}
 }
 

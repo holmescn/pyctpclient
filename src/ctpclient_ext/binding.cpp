@@ -64,7 +64,7 @@ template<class T1, class T2>
 inline boost::python::object tostr(T2 T1::*member_var)
 {
   return make_function(
-        [member_var](T1 const* this_) { return std::string(this_->*member_var); },
+        [member_var](T1 const* this_) { return str(this_->*member_var); },
         default_call_policies(),
         boost::mpl::vector<str, T1 const*>());
 }
@@ -417,6 +417,10 @@ str tostr_OrderActionStatus(T const* this_)
 
 BOOST_PYTHON_MODULE(_ctpclient)
 {
+  // Force the GIL to be created and initialized.  The current caller will
+  // own the GIL.
+  PyEval_InitThreads();
+
   register_exception_translator<RequestNetworkException>(RequestNetworkException_translator);
   register_exception_translator<FullRequestQueueException>(FullRequestQueueException_translator);
   register_exception_translator<RequestTooFrequentlyException>(RequestTooFrequentlyException_translator);
@@ -924,7 +928,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("get_api_version", &CtpClient::GetApiVersion)
         .staticmethod("get_api_version")
     .def("run", &CtpClient::Run)
-    .def("join", &CtpClient::Join)
+    .def("join", &CtpClient::Join, (arg("hours")=-1))
     .def("exit", &CtpClient::Exit)
 
     .def("md_login", &CtpClient::MdLogin)

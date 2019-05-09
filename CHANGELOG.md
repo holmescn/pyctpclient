@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.1.4a0
+
+1. Add GIL for each callback functions.
+
 ## 0.1.3a2
 
 1. Compute volume and turnover in one minute

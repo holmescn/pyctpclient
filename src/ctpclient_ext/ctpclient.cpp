@@ -28,6 +28,7 @@
 #include "mdspi.h"
 #include "traderspi.h"
 #include "ctpclient.h"
+#include "GILhelper.h"
 
 using namespace boost::python;
 
@@ -136,9 +137,11 @@ void CtpClient::Run()
 	}, g_future).detach();
 }
 
-void CtpClient::Join()
+void CtpClient::Join(int hours)
 {
-	g_future.wait_for(std::chrono::hours(24));
+	while (g_future.wait_for(std::chrono::hours(hours > 0 ? hours : 1)) == std::future_status::timeout) {
+		if (hours >= 0) break;
+	}
 }
 
 void CtpClient::Exit()
@@ -204,6 +207,7 @@ void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
 void CtpClientWrap::OnMdFrontConnected()
 {
 	if (override fn = get_override("on_md_front_connected")) {
+		GIL_lock();
 		fn();
 	} else {
 		std::cerr << "Market Data Front Connected" << std::endl;
@@ -214,6 +218,7 @@ void CtpClientWrap::OnMdFrontConnected()
 void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 {
 	if (override fn = get_override("on_md_front_disconnected")) {
+		GIL_lock();
 		fn(nReason);
 	} else {
 		std::cerr << "Market Data Front Disconnected with reason = " << nReason << std::endl;
@@ -223,6 +228,7 @@ void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_md_user_login")) {
+		GIL_lock();
 		fn(pRspUserLogin, pRspInfo);
 	} else {
 		std::cerr << "Market Data User Login" << std::endl;
@@ -235,6 +241,7 @@ void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CT
 void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_md_user_logout")) {
+		GIL_lock();
 		fn(pUserLogout, pRspInfo);
 	} else {
 		std::cerr << "Market Data User Logout" << std::endl;
@@ -244,6 +251,7 @@ void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThos
 void CtpClientWrap::OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_subscribe_market_data")) {
+		GIL_lock();
 		fn(pSpecificInstrument, pRspInfo);
 	} else {
 		std::cerr << "Market Data subscribed " << pSpecificInstrument->InstrumentID << std::endl;
@@ -253,6 +261,7 @@ void CtpClientWrap::OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSp
 void CtpClientWrap::OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_unsubscribe_market_data")) {
+		GIL_lock();
 		fn(pSpecificInstrument, pRspInfo);
 	} else {
 		std::cerr << "Market Data unsubscribed " << pSpecificInstrument->InstrumentID << std::endl;
@@ -262,6 +271,7 @@ void CtpClientWrap::OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *p
 void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
 	if (override fn = get_override("on_rtn_market_data")) {
+		GIL_lock();
 		fn(pDepthMarketData);
 	}
 }
@@ -269,6 +279,7 @@ void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarket
 void CtpClientWrap::OnTick(std::string instrumentId, float price, int volume, std::string time)
 {
 	if (override fn = get_override("on_tick")) {
+		GIL_lock();
 		fn(instrumentId, price, volume, time);
 	}
 }
@@ -276,6 +287,7 @@ void CtpClientWrap::OnTick(std::string instrumentId, float price, int volume, st
 void CtpClientWrap::On1Min(M1Bar &bar)
 {
 	if (override fn = get_override("on_1min")) {
+		GIL_lock();
 		fn(bar);
 	}
 }
@@ -283,6 +295,7 @@ void CtpClientWrap::On1Min(M1Bar &bar)
 void CtpClientWrap::On1MinTick(M1Bar &bar)
 {
 	if (override fn = get_override("on_1min_tick")) {
+		GIL_lock();
 		fn(bar);
 	}
 }
@@ -290,6 +303,7 @@ void CtpClientWrap::On1MinTick(M1Bar &bar)
 void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_md_error")) {
+		GIL_lock();
 		fn(pRspInfo);
 	} else {
 		std::cerr << "Market Data Error: " << pRspInfo->ErrorID << std::endl;
@@ -299,6 +313,7 @@ void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo)
 void CtpClientWrap::OnTimer1S(std::string time)
 {
 	if (override fn = get_override("on_timer_1s")) {
+		GIL_lock();
 		fn(time);
 	}
 }
@@ -725,6 +740,7 @@ void CtpClientWrap::OnTdFrontConnected()
 	std::cerr << "Trader Front Connected" << std::endl;
 
 	if (override fn = get_override("on_td_front_connected")) {
+		GIL_lock();
 		fn();
 	} else {
 		TdLogin();
@@ -734,6 +750,7 @@ void CtpClientWrap::OnTdFrontConnected()
 void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 {
 	if (override fn = get_override("on_md_front_disconnected")) {
+		GIL_lock();
 		fn(nReason);
 	} else {
 		std::cerr << "Trader Front Disconnected with reason = " << nReason << std::endl;
@@ -743,6 +760,7 @@ void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_td_user_login")) {
+		GIL_lock();
 		fn(pRspUserLogin, pRspInfo);
 	} else {
 		std::cerr << "Trader User Login" << std::endl;
@@ -753,6 +771,7 @@ void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CT
 void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_td_user_logout")) {
+		GIL_lock();
 		fn(pUserLogout, pRspInfo);
 	} else {
 		std::cerr << "Trader User Logout" << std::endl;
@@ -762,6 +781,7 @@ void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThos
 void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_settlement_info_confirm")) {
+		GIL_lock();
 		fn(pSettlementInfoConfirm, pRspInfo);
 	} else {
 		std::cerr << "SettlementInfoConfirm: " << pRspInfo->ErrorID << std::endl;
@@ -771,6 +791,7 @@ void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmFi
 void CtpClientWrap::OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_err_order_insert")) {
+		GIL_lock();
 		fn(pInputOrder, pRspInfo);
 	}
 }
@@ -778,6 +799,7 @@ void CtpClientWrap::OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 void CtpClientWrap::OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_err_order_action")) {
+		GIL_lock();
 		fn(pInputOrderAction, pOrderAction, pRspInfo);
 	}
 }
@@ -785,6 +807,7 @@ void CtpClientWrap::OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 void CtpClientWrap::OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder)
 {
 	if (override fn = get_override("on_rtn_order")) {
+		GIL_lock();
 		fn(pOrder);
 	}
 }
@@ -792,6 +815,7 @@ void CtpClientWrap::OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder)
 void CtpClientWrap::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
 	if (override fn = get_override("on_rtn_trade")) {
+		GIL_lock();
 		fn(pTrade);
 	}
 }
@@ -799,6 +823,7 @@ void CtpClientWrap::OnRtnTrade(CThostFtdcTradeField *pTrade)
 void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_td_error")) {
+		GIL_lock();
 		fn(pRspInfo);
 	} else {
 		std::cerr << "Trader Error: " << pRspInfo->ErrorID << std::endl;
@@ -808,6 +833,7 @@ void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo)
 void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_order")) {
+		GIL_lock();
 		fn(pOrder, pRspInfo, bIsLast);
 	}
 }
@@ -815,6 +841,7 @@ void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInf
 void CtpClientWrap::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_trade")) {
+		GIL_lock();
 		fn(pTrade, pRspInfo, bIsLast);
 	}
 }
@@ -822,6 +849,7 @@ void CtpClientWrap::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInf
 void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_trading_account")) {
+		GIL_lock();
 		fn(pTradingAccount, pRspInfo, bIsLast);
 	}
 }
@@ -829,6 +857,7 @@ void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradi
 void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_investor_position")) {
+		GIL_lock();
 		fn(pInvestorPosition, pRspInfo, bIsLast);
 	}
 }
@@ -836,6 +865,7 @@ void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pI
 void CtpClientWrap::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_investor_position_detail")) {
+		GIL_lock();
 		fn(pInvestorPositionDetail, pRspInfo, bIsLast);
 	}
 }
@@ -843,6 +873,7 @@ void CtpClientWrap::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDet
 void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_market_data")) {
+		GIL_lock();
 		fn(pDepthMarketData, pRspInfo, bIsLast);
 	}
 }
@@ -850,6 +881,7 @@ void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDep
 void CtpClientWrap::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (override fn = get_override("on_rsp_settlement_info")) {
+		GIL_lock();
 		fn(pSettlementInfo, pRspInfo);
 	}
 }

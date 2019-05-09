@@ -105,7 +105,7 @@ public:
     virtual ~CtpClient();
 
     void Run();
-    void Join();
+    void Join(int hours);
     void Exit();
 
 public:

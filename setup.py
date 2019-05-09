@@ -26,7 +26,7 @@ elif sys.platform == "linux":
     ]
     extra_compile_args = ['-std=c++14', '-Wall', '-Wextra', '-Wno-unknown-pragmas', '-Wno-unused-parameter']
 else:
-    raise NotImplemented
+    raise ValueError('Platform %s is not supportted.' % sys.platform)
 
 libraries.extend([
     'boost_system',

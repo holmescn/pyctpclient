@@ -64,7 +64,7 @@ template<class T1, class T2>
 inline boost::python::object tostr(T2 T1::*member_var)
 {
   return make_function(
-        [member_var](T1 const* this_) { return str(this_->*member_var); },
+        [member_var](T1 const* this_) { return std::string(this_->*member_var); },
         default_call_policies(),
         boost::mpl::vector<str, T1 const*>());
 }

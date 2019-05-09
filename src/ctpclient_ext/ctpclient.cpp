@@ -179,16 +179,9 @@ void CtpClient::SubscribeMarketData(boost::python::list instrumentIds)
 	size_t N = len(instrumentIds);
 	char **ppInstrumentIDs = new char*[N];
 	for (size_t i = 0; i < N; i++) {
-		std::string instrumentId = extract<std::string>(instrumentIds[i]);
-		ppInstrumentIDs[i] = new char[instrumentId.size()+1];
-		memcpy(ppInstrumentIDs[i], instrumentId.data(), instrumentId.size()+1);
+		ppInstrumentIDs[i] = extract<char*>(instrumentIds[i]);
 	}
-
 	_mdApi->SubscribeMarketData(ppInstrumentIDs, N);
-
-	for (size_t i = 0; i < N; i++) {
-		delete[] ppInstrumentIDs[i];
-	}
 	delete[] ppInstrumentIDs;
 }
 
@@ -197,16 +190,9 @@ void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
 	size_t N = len(instrumentIds);
 	char **ppInstrumentIDs = new char*[N];
 	for (size_t i = 0; i < N; i++) {
-		std::string instrumentId = extract<std::string>(instrumentIds[i]);
-		ppInstrumentIDs[i] = new char[instrumentId.size()+1];
-		memcpy(ppInstrumentIDs[i], instrumentId.data(), instrumentId.size()+1);
+		ppInstrumentIDs[i] = extract<char*>(instrumentIds[i]);
 	}
-
 	_mdApi->UnSubscribeMarketData(ppInstrumentIDs, N);
-
-	for (size_t i = 0; i < N; i++) {
-		delete[] ppInstrumentIDs[i];
-	}
 	delete[] ppInstrumentIDs;
 }
 

@@ -1,9 +1,11 @@
 # pyctpclient Change History
 
-## 0.1.3a1
+## 0.1.3a2
 
 1. Compute volume and turnover in one minute
 2. Add 1s timer.
+3. FIX return string cannot be save
+4. Use `extract<char*>` instead of alloc new memory in subscribe/unsubscribe market data.
 
 ## 0.1.2a0
 

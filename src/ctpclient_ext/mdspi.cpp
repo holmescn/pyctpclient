@@ -63,43 +63,49 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketDat
     snprintf(tickTime, sizeof tickTime, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
 
     M1Bar bar;
+    memset(&bar, 0, sizeof bar);
     memcpy(bar.InstrumentID, pDepthMarketData->InstrumentID, sizeof bar.InstrumentID);
-    memset(bar.UpdateTime, 0, sizeof bar.UpdateTime);
     memcpy(bar.UpdateTime, pDepthMarketData->UpdateTime, 5);
 
     std::string m1_now(bar.UpdateTime);
     std::string instrumentId(pDepthMarketData->InstrumentID);
     auto price = pDepthMarketData->LastPrice;
-    bar.Position = pDepthMarketData->OpenInterest;
 
     auto iter = _m1Bars.find(instrumentId);
     if (iter == _m1Bars.end()) {
         bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
+        bar.BaseVolume = pDepthMarketData->Volume;
+        bar.BaseTurnover = pDepthMarketData->Turnover;
+        bar.TickVolume = pDepthMarketData->Volume;
+        bar.TickTurnover = pDepthMarketData->Turnover;
+        bar.Volume = pDepthMarketData->Volume;
+        bar.Turnover = pDepthMarketData->Turnover;
+        bar.Position = pDepthMarketData->OpenInterest;
+        _m1Bars.emplace(std::make_pair(instrumentId, bar));
     } else {
-        auto &b = iter->second;
-        if (m1_now == b.UpdateTime) {
-            bar.OpenPrice = b.OpenPrice;
-            bar.HighestPrice = price > b.HighestPrice ? price : b.HighestPrice;
-            bar.LowestPrice = price < b.LowestPrice ? price : b.LowestPrice;
+        auto &prev = iter->second;
+        if (m1_now == prev.UpdateTime) {
+            bar.OpenPrice = prev.OpenPrice;
+            bar.HighestPrice = price > prev.HighestPrice ? price : prev.HighestPrice;
+            bar.LowestPrice = price < prev.LowestPrice ? price : prev.LowestPrice;
             bar.ClosePrice = price;
-            bar.PreVolume = b.PreVolume;
-            bar.PreTurnover = b.PreTurnover;
+            bar.BaseVolume = prev.BaseVolume;
+            bar.BaseTurnover = prev.BaseTurnover;
         } else {
             bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
-            bar.PreVolume = b.Volume;
-            bar.PreTurnover = b.Turnover;
+            bar.BaseVolume = prev.TickVolume;
+            bar.BaseTurnover = prev.TickTurnover;
+            _client->On1Min(prev);
         }
 
-        bar.Volume = pDepthMarketData->Volume - b.PreVolume;
-        bar.Turnover = pDepthMarketData->Turnover - b.PreTurnover;
+        bar.TickVolume = pDepthMarketData->Volume;
+        bar.TickTurnover = pDepthMarketData->Turnover;
+        bar.Position = pDepthMarketData->OpenInterest;
+        bar.Volume = bar.TickVolume > bar.BaseVolume ? bar.TickVolume - bar.BaseVolume : bar.TickVolume;
+        bar.Turnover = bar.TickTurnover > bar.BaseTurnover ? bar.TickTurnover - bar.BaseTurnover : bar.TickTurnover;
+
+        memcpy(&prev, &bar, sizeof bar);
     }
-
-    if (iter != _m1Bars.end() && std::string(iter->second.UpdateTime) != m1_now) {
-        _client->On1Min(iter->second);
-    }
-
-    _m1Bars[pDepthMarketData->InstrumentID] = bar;
-
     _client->OnRtnMarketData(pDepthMarketData);
     _client->OnTick(instrumentId, pDepthMarketData->LastPrice, pDepthMarketData->Volume, tickTime);
     _client->On1MinTick(bar);

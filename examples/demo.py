@@ -9,12 +9,10 @@ class Client(CtpClient):
         print(instrument_id, price, volume)
 
     def on_1min(self, bar):
-        if bar.instrument_id == "rb1910":
-            self.insert_order(bar.instrument_id, Direction.BUY, OffsetFlag.OPEN, bar.close, volume=1)
-            print("Insert Order")
+        print("1min", bar.instrument_id, bar.close, bar.volume, bar.turnover)
 
     def on_1min_tick(self, bar):
-        print(bar.instrument_id, "1 min tick")
+        print("1min tick", bar.instrument_id, bar.close, bar.volume, bar.turnover)
 
     def on_settlement_info_confirm(self, settlement_info_confirm, rsp_info):
         self.query_trading_account()

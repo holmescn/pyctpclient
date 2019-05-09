@@ -27,11 +27,13 @@ struct M1Bar {
 	TThostFtdcPriceType HighestPrice;
 	TThostFtdcPriceType LowestPrice;
 	TThostFtdcPriceType ClosePrice;
-	TThostFtdcVolumeType PreVolume;
+	TThostFtdcVolumeType TickVolume;
+	TThostFtdcVolumeType BaseVolume;
 	TThostFtdcVolumeType Volume;
-	TThostFtdcLargeVolumeType Position;
-	TThostFtdcMoneyType	PreTurnover;
+	TThostFtdcMoneyType	TickTurnover;
+	TThostFtdcMoneyType	BaseTurnover;
 	TThostFtdcMoneyType	Turnover;
+	TThostFtdcLargeVolumeType Position;
 };
 
 class CtpClient;

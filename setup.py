@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 from setuptools import setup, find_packages, Extension
@@ -13,8 +14,6 @@ if sys.platform == 'win32':
     ]
     libraries = [
         'boost_python37-vc140-mt',
-        'thostmduserapi',
-        'thosttraderapi'
     ]
     extra_compile_args = []
 elif sys.platform == "linux":
@@ -23,15 +22,25 @@ elif sys.platform == "linux":
         os.path.abspath("./lib")
     ]
     libraries = [
-        'boost_system',
-        'boost_filesystem',
         'boost_python-py35',
-        'thostmduserapi',
-        'thosttraderapi'
     ]
     extra_compile_args = ['-std=c++14', '-Wall', '-Wextra', '-Wno-unknown-pragmas', '-Wno-unused-parameter']
 else:
     raise NotImplemented
+
+libraries.extend([
+    'boost_system',
+    'boost_filesystem',
+    'thostmduserapi',
+    'thosttraderapi'
+])
+
+
+with open('src/pyctpclient/__init__.py', 'r') as fp:
+    for line in fp.readlines():
+        matched = re.match(r'__version__\s*=\s*"(.*)"', line)
+        if matched:
+            version = matched.group(1)
 
 
 ctpclient_ext = Extension('pyctpclient._ctpclient',
@@ -49,7 +58,7 @@ ctpclient_ext = Extension('pyctpclient._ctpclient',
 setup(
     name='pyctpclient',
     platforms=['linux'],
-    version='0.1.3a0',
+    version=version,
     description='CTP python client.',
     long_description = '''
 CTP python client wrapped by Boost::python3.

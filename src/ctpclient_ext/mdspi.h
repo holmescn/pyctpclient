@@ -19,22 +19,7 @@
 #include "ThostFtdcMdApi.h"
 #include "ThostFtdcUserApiStruct.h"
 #include "ThostFtdcUserApiDataType.h"
-
-struct M1Bar {
-	TThostFtdcInstrumentIDType InstrumentID;
-	TThostFtdcTimeType  UpdateTime;
-	TThostFtdcPriceType OpenPrice;
-	TThostFtdcPriceType HighestPrice;
-	TThostFtdcPriceType LowestPrice;
-	TThostFtdcPriceType ClosePrice;
-	TThostFtdcVolumeType TickVolume;
-	TThostFtdcVolumeType BaseVolume;
-	TThostFtdcVolumeType Volume;
-	TThostFtdcMoneyType	TickTurnover;
-	TThostFtdcMoneyType	BaseTurnover;
-	TThostFtdcMoneyType	Turnover;
-	TThostFtdcLargeVolumeType Position;
-};
+#include "bar.h"
 
 class CtpClient;
 class MdSpi : public CThostFtdcMdSpi

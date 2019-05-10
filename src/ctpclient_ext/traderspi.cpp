@@ -29,12 +29,15 @@ TraderSpi::~TraderSpi()
 
 void TraderSpi::OnFrontConnected()
 {
-    _client->OnTdFrontConnected();
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdFrontConnected);
+    _client->Push(r);
 }
 
 void TraderSpi::OnFrontDisconnected(int nReason)
 {
-    _client->OnTdFrontDisconnected(nReason);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdFrontDisconnected);
+    r->nReason = nReason;
+    _client->Push(r);
 }
 
 void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField * /* pRspAuthenticateField */, CThostFtdcRspInfoField * /* pRspInfo */, int /* nRequestID */, bool /* bIsLast */)
@@ -44,87 +47,118 @@ void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField * /* pRspAuthen
 
 void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnTdUserLogin(pRspUserLogin, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdUserLogin, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pRspUserLogin);
+    _client->Push(r);
 }
 
 void TraderSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnTdUserLogout(pUserLogout, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdUserLogout, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pUserLogout);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspSettlementInfoConfirm(pSettlementInfoConfirm, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnSettlementInfoConfirm, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pSettlementInfoConfirm);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnErrOrderInsert(pInputOrder, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspOrderInsert, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pInputOrder);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnErrOrderAction(pInputOrderAction, nullptr, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspOrderAction, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pInputOrderAction);
+    _client->Push(r);
 }
 
 void TraderSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
-    _client->OnErrOrderInsert(pInputOrder, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnErrRtnOrderInsert, pRspInfo);
+    r->SetRsp(pInputOrder);
+    _client->Push(r);
 }
 
 void TraderSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
-    _client->OnErrOrderAction(nullptr, pOrderAction, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnErrRtnOrderAction, pRspInfo);
+    r->SetRsp(pOrderAction);
+    _client->Push(r);
 }
 
 void TraderSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
-    CThostFtdcOrderField *pNewOrder = new CThostFtdcOrderField;
-    memcpy(pNewOrder, pOrder, sizeof(CThostFtdcOrderField));
-    _client->OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField>(pNewOrder));
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRtnOrder);
+    r->SetRsp(pOrder);
+    _client->Push(r);
 }
 
 void TraderSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
-    _client->OnRtnTrade(pTrade);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRtnTrade);
+    r->SetRsp(pTrade);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnTdError(pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdError, pRspInfo, nRequestID, bIsLast);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
+void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQryOrder(pOrder, pRspInfo, bIsLast);    
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryOrder, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pOrder);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
+void TraderSpi::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQryTrade(pTrade, pRspInfo, bIsLast);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryTrade, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pTrade);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
+void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQryTradingAccount(pTradingAccount, pRspInfo, bIsLast);   
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryTradingAccount, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pTradingAccount);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
+void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQryInvestorPosition(pInvestorPosition, pRspInfo, bIsLast);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryInvestorPosition, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pInvestorPosition);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
+void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQryDepthMarketData(pDepthMarketData, pRspInfo, bIsLast);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryDepthMarketData, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pDepthMarketData);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void TraderSpi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQrySettlementInfo(pSettlementInfo, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQrySettlementInfo, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pSettlementInfo);
+    _client->Push(r);
 }
 
-void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool bIsLast)
+void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnRspQryInvestorPositionDetail(pInvestorPositionDetail, pRspInfo, bIsLast);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryInvestorPositionDetail, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pInvestorPositionDetail);
+    _client->Push(r);
 }

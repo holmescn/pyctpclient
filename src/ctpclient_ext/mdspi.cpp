@@ -29,89 +29,119 @@ MdSpi::~MdSpi()
 
 void MdSpi::OnFrontConnected()
 {
-    _client->OnMdFrontConnected();
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnMdFrontConnected);
+    _client->Push(r);
 }
 
 void MdSpi::OnFrontDisconnected(int nReason)
 {
-    _client->OnMdFrontDisconnected(nReason);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnMdFrontDisconnected);
+    r->nReason = nReason;
+    _client->Push(r);
 }
 
-void MdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void MdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnMdUserLogin(pRspUserLogin, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnMdUserLogin, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pRspUserLogin);
+    _client->Push(r);
 }
 
-void MdSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void MdSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnMdUserLogout(pUserLogout, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnMdUserLogout, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pUserLogout);
+    _client->Push(r);
 }
 
-void MdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void MdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnSubscribeMarketData(pSpecificInstrument, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnSubMarketData, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pSpecificInstrument);
+    _client->Push(r);
 }
 
-void MdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void MdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnUnsubscribeMarketData(pSpecificInstrument, pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnUnSubMarketData, pRspInfo, nRequestID, bIsLast);
+    r->SetRsp(pSpecificInstrument);
+    _client->Push(r);
 }
 
 void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
-    char tickTime[16] = { 0 };
-    snprintf(tickTime, sizeof tickTime, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
+    TickBar tickBar;
+    memset(&tickBar, 0, sizeof tickBar);
+    snprintf(tickBar.UpdateTime, 16, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
+    strncpy(tickBar.InstrumentID, pDepthMarketData->InstrumentID, sizeof tickBar.InstrumentID);
+    tickBar.Price = pDepthMarketData->LastPrice;
+    tickBar.Volume = pDepthMarketData->Volume;
+    tickBar.Turnover = pDepthMarketData->Turnover;
+    tickBar.Position = pDepthMarketData->OpenInterest;
 
-    M1Bar bar;
-    memset(&bar, 0, sizeof bar);
-    memcpy(bar.InstrumentID, pDepthMarketData->InstrumentID, sizeof bar.InstrumentID);
-    memcpy(bar.UpdateTime, pDepthMarketData->UpdateTime, 5);
+    M1Bar m1Bar;
+    memset(&m1Bar, 0, sizeof m1Bar);
+    memcpy(m1Bar.InstrumentID, pDepthMarketData->InstrumentID, sizeof m1Bar.InstrumentID);
+    memcpy(m1Bar.UpdateTime, pDepthMarketData->UpdateTime, 5);
 
-    std::string m1_now(bar.UpdateTime);
+    std::string m1Now(m1Bar.UpdateTime);
     std::string instrumentId(pDepthMarketData->InstrumentID);
     auto price = pDepthMarketData->LastPrice;
 
     auto iter = _m1Bars.find(instrumentId);
     if (iter == _m1Bars.end()) {
-        bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
-        bar.BaseVolume = pDepthMarketData->Volume;
-        bar.BaseTurnover = pDepthMarketData->Turnover;
-        bar.TickVolume = pDepthMarketData->Volume;
-        bar.TickTurnover = pDepthMarketData->Turnover;
-        bar.Volume = pDepthMarketData->Volume;
-        bar.Turnover = pDepthMarketData->Turnover;
-        bar.Position = pDepthMarketData->OpenInterest;
-        _m1Bars.emplace(std::make_pair(instrumentId, bar));
+        m1Bar.OpenPrice = m1Bar.HighestPrice = m1Bar.LowestPrice = m1Bar.ClosePrice = price;
+        m1Bar.BaseVolume = pDepthMarketData->Volume;
+        m1Bar.BaseTurnover = pDepthMarketData->Turnover;
+        m1Bar.TickVolume = pDepthMarketData->Volume;
+        m1Bar.TickTurnover = pDepthMarketData->Turnover;
+        m1Bar.Volume = pDepthMarketData->Volume;
+        m1Bar.Turnover = pDepthMarketData->Turnover;
+        m1Bar.Position = pDepthMarketData->OpenInterest;
+        _m1Bars.emplace(std::make_pair(instrumentId, m1Bar));
     } else {
         auto &prev = iter->second;
-        if (m1_now == prev.UpdateTime) {
-            bar.OpenPrice = prev.OpenPrice;
-            bar.HighestPrice = price > prev.HighestPrice ? price : prev.HighestPrice;
-            bar.LowestPrice = price < prev.LowestPrice ? price : prev.LowestPrice;
-            bar.ClosePrice = price;
-            bar.BaseVolume = prev.BaseVolume;
-            bar.BaseTurnover = prev.BaseTurnover;
+        if (m1Now == prev.UpdateTime) {
+            m1Bar.OpenPrice = prev.OpenPrice;
+            m1Bar.HighestPrice = price > prev.HighestPrice ? price : prev.HighestPrice;
+            m1Bar.LowestPrice = price < prev.LowestPrice ? price : prev.LowestPrice;
+            m1Bar.ClosePrice = price;
+            m1Bar.BaseVolume = prev.BaseVolume;
+            m1Bar.BaseTurnover = prev.BaseTurnover;
         } else {
-            bar.OpenPrice = bar.HighestPrice = bar.LowestPrice = bar.ClosePrice = price;
-            bar.BaseVolume = prev.TickVolume;
-            bar.BaseTurnover = prev.TickTurnover;
-            _client->On1Min(prev);
+            m1Bar.OpenPrice = m1Bar.HighestPrice = m1Bar.LowestPrice = m1Bar.ClosePrice = price;
+            m1Bar.BaseVolume = prev.TickVolume;
+            m1Bar.BaseTurnover = prev.TickTurnover;
+
+            auto r = new CtpClient::Response(CtpClient::ResponseType::On1Min);
+            r->SetRsp(&prev);
+            _client->Push(r);
         }
 
-        bar.TickVolume = pDepthMarketData->Volume;
-        bar.TickTurnover = pDepthMarketData->Turnover;
-        bar.Position = pDepthMarketData->OpenInterest;
-        bar.Volume = bar.TickVolume > bar.BaseVolume ? bar.TickVolume - bar.BaseVolume : bar.TickVolume;
-        bar.Turnover = bar.TickTurnover > bar.BaseTurnover ? bar.TickTurnover - bar.BaseTurnover : bar.TickTurnover;
+        m1Bar.TickVolume = pDepthMarketData->Volume;
+        m1Bar.TickTurnover = pDepthMarketData->Turnover;
+        m1Bar.Position = pDepthMarketData->OpenInterest;
+        m1Bar.Volume = m1Bar.TickVolume > m1Bar.BaseVolume ? m1Bar.TickVolume - m1Bar.BaseVolume : m1Bar.TickVolume;
+        m1Bar.Turnover = m1Bar.TickTurnover > m1Bar.BaseTurnover ? m1Bar.TickTurnover - m1Bar.BaseTurnover : m1Bar.TickTurnover;
 
-        memcpy(&prev, &bar, sizeof bar);
+        memcpy(&prev, &m1Bar, sizeof m1Bar);
     }
-    _client->OnRtnMarketData(pDepthMarketData);
-    _client->OnTick(instrumentId, pDepthMarketData->LastPrice, pDepthMarketData->Volume, tickTime);
-    _client->On1MinTick(bar);
+
+    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRtnMarketData);
+    r->SetRsp(pDepthMarketData);
+    _client->Push(r);
+
+    r = new CtpClient::Response(CtpClient::ResponseType::OnTick);
+    r->SetRsp(&tickBar);
+    _client->Push(r);
+
+    r = new CtpClient::Response(CtpClient::ResponseType::On1MinTick);
+    r->SetRsp(&m1Bar);
+    _client->Push(r);
 }
 
-void MdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int /* nRequestID */, bool /* bIsLast */)
+void MdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    _client->OnMdError(pRspInfo);
+    auto r = new CtpClient::Response(CtpClient::ResponseType::On1MinTick, pRspInfo, nRequestID, bIsLast);
+    _client->Push(r);
 }

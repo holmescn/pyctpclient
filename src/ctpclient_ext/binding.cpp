@@ -417,8 +417,6 @@ str tostr_OrderActionStatus(T const* this_)
 
 BOOST_PYTHON_MODULE(_ctpclient)
 {
-  // Force the GIL to be created and initialized.  The current caller will
-  // own the GIL.
   PyEval_InitThreads();
 
   register_exception_translator<RequestNetworkException>(RequestNetworkException_translator);
@@ -509,6 +507,15 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def_readonly("volume", &M1Bar::Volume)
     .def_readonly("turnover", &M1Bar::Turnover)
     .def_readonly("position", &M1Bar::Position)
+    ;
+
+  class_<TickBar>("TickBar")
+    .add_property("instrument_id", tostr(&TickBar::InstrumentID))
+    .add_property("update_time", tostr(&TickBar::UpdateTime))
+    .def_readonly("price", &TickBar::Price)
+    .def_readonly("volume", &TickBar::Volume)
+    .def_readonly("turnover", &TickBar::Turnover)
+    .def_readonly("position", &TickBar::Position)
     ;
 
   class_<CThostFtdcRspUserLoginField>("UserLoginInfo")
@@ -928,7 +935,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("get_api_version", &CtpClient::GetApiVersion)
         .staticmethod("get_api_version")
     .def("run", &CtpClient::Run)
-    .def("join", &CtpClient::Join, (arg("hours")=-1))
+    .def("join", &CtpClient::Join)
     .def("exit", &CtpClient::Exit)
 
     .def("md_login", &CtpClient::MdLogin)
@@ -943,8 +950,6 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_rtn_market_data", pure_virtual(&CtpClient::OnRtnMarketData))
     .def("on_tick", pure_virtual(&CtpClient::OnTick))
     .def("on_1min", pure_virtual(&CtpClient::On1Min))
-    .def("on_1min_tick", pure_virtual(&CtpClient::On1MinTick))
-    .def("on_timer_1s", pure_virtual(&CtpClient::OnTimer1S))
 
     .def("td_login", &CtpClient::TdLogin)
     .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
@@ -952,7 +957,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("query_trading_account", &CtpClient::QueryTradingAccount)
     .def("query_investor_position", &CtpClient::QueryInvestorPosition)
     .def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
-    .def("query_market_dara", &CtpClient::QueryMarketData)
+    .def("query_market_data", &CtpClient::QueryMarketData, arg("instrument_id"))
     .def("query_settlement_info", &CtpClient::QuerySettlementInfo)
     .def("insert_order", &CtpClient::InsertOrder,
       (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),
@@ -984,6 +989,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_rsp_investor_position_detail", pure_virtual(&CtpClient::OnRspQryInvestorPositionDetail))
     .def("on_rsp_market_data", pure_virtual(&CtpClient::OnRspQryDepthMarketData))
     .def("on_rsp_settlement_info", pure_virtual(&CtpClient::OnRspQrySettlementInfo))
+    .def("on_idle", pure_virtual(&CtpClient::OnIdle))
     ;
 
 };

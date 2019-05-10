@@ -2,8 +2,8 @@
 from pyctpclient import CtpClient, Direction, OffsetFlag
 
 class Client(CtpClient):
-    def on_timer_1s(self, time):
-        print(time)
+    def on_idle(self):
+        print("Idle")
 
     def on_tick(self, instrument_id, price, volume, time):
         print(instrument_id, price, volume)

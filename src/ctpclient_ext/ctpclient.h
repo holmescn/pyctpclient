@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 #pragma once
+#include <queue>
 #include <chrono>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 #include "ThostFtdcUserApiStruct.h"
+#include "bar.h"
 
-struct M1Bar;
 class MdSpi;
 class TraderSpi;
 class CThostFtdcMdApi;
@@ -92,7 +96,94 @@ class CtpClient
     std::string _userId;
     std::string _password;
     std::chrono::steady_clock::time_point _queryTick = std::chrono::steady_clock::now();
+    std::thread _thread;
 
+    enum class ResponseType : uint32_t {
+        OnMdFrontConnected,
+        OnMdFrontDisconnected,
+        OnMdUserLogin,
+        OnMdUserLogout,
+        OnSubMarketData,
+        OnUnSubMarketData,
+        OnRtnMarketData,
+        OnTick,
+        On1Min,
+        On1MinTick,
+        OnMdError,
+
+        OnTdFrontConnected,
+        OnTdFrontDisconnected,
+        OnTdUserLogin,
+        OnTdUserLogout,
+        OnSettlementInfoConfirm,
+        OnRspOrderInsert,
+        OnRspOrderAction,
+        OnErrRtnOrderInsert,
+        OnErrRtnOrderAction,
+        OnRtnOrder,
+        OnRtnTrade,
+        OnTdError,
+        OnRspQryOrder,
+        OnRspQryTrade,
+        OnRspQryTradingAccount,
+        OnRspQryInvestorPosition,
+        OnRspQryDepthMarketData,
+        OnRspQrySettlementInfo,
+        OnRspQryInvestorPositionDetail
+    };
+
+    struct Response {
+        ResponseType type;
+        union {
+            char base;
+            CThostFtdcRspUserLoginField RspUserLogin;
+            CThostFtdcUserLogoutField UserLogout;
+            CThostFtdcSpecificInstrumentField SpecificInstrument;
+            CThostFtdcDepthMarketDataField DepthMarketData;
+            M1Bar m1;
+            TickBar tick;
+            CThostFtdcSettlementInfoConfirmField SettlementInfoConfirm;
+            CThostFtdcInputOrderField InputOrder;
+            CThostFtdcInputOrderActionField InputOrderAction;
+            CThostFtdcOrderActionField OrderAction;
+            CThostFtdcOrderField Order;
+            CThostFtdcTradeField Trade;
+            CThostFtdcTradingAccountField TradingAccount;
+            CThostFtdcInvestorPositionField InvestorPosition;
+            CThostFtdcSettlementInfoField SettlementInfo;
+            CThostFtdcInvestorPositionDetailField InvestorPositionDetail;
+        };
+        CThostFtdcRspInfoField RspInfo;
+        int nRequestID;
+        int nReason;
+        bool bIsLast;
+
+        Response(ResponseType type_, CThostFtdcRspInfoField *pRspInfo=nullptr, int nRequestID_=0, bool bIsLast_=true)
+        : type(type_), nRequestID(nRequestID_), nReason(0), bIsLast(bIsLast_) {
+            if (pRspInfo) {
+                memcpy(&RspInfo, pRspInfo, sizeof RspInfo);
+            }
+        }
+        Response(const Response &other) = default;
+        Response(Response &&other) = default;
+        Response& operator=(const Response &rhs) = default;
+        Response& operator=(Response &&rhs) = default;
+        ~Response() = default;
+
+        template<class T>
+        inline void SetRsp(T *pRsp) {
+            memcpy(&base, pRsp, sizeof *pRsp);
+        }
+    };
+
+    std::queue<CtpClient::Response*> _q;
+    std::mutex _queueMutex;
+    std::condition_variable _queueConditionVariable;
+    void ProcessResponse(CtpClient::Response *r);
+    void Push(CtpClient::Response *r);
+
+    friend class MdSpi;
+    friend class TraderSpi;
 protected:
     boost::python::list _instrumentIds;
 
@@ -105,7 +196,7 @@ public:
     virtual ~CtpClient();
 
     void Run();
-    void Join(int hours);
+    void Join();
     void Exit();
 
 public:
@@ -143,12 +234,12 @@ public:
     virtual void OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
     virtual void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
     virtual void OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) = 0;
-    virtual void OnTick(std::string instrumentId, float price, int volume, std::string time) = 0;
-    virtual void On1Min(M1Bar& bar) = 0;
-    virtual void On1MinTick(M1Bar& bar) = 0;
+    virtual void OnTick(TickBar* bar) = 0;
+    virtual void On1Min(M1Bar* bar) = 0;
+    virtual void On1MinTick(M1Bar* bar) = 0;
 	virtual void OnMdError(CThostFtdcRspInfoField *pRspInfo) = 0;
 
-    virtual void OnTimer1S(std::string time) = 0;
+    virtual void OnIdle() = 0;
 
 public:
     // TraderApi
@@ -225,13 +316,11 @@ public:
     void OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;
     void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;
     void OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData) override;
-    void OnTick(std::string instrumentId, float price, int volume, std::string time) override;
-    void On1Min(M1Bar &bar) override;
-    void On1MinTick(M1Bar &bar) override;
+    void OnTick(TickBar *bar) override;
+    void On1Min(M1Bar *bar) override;
+    void On1MinTick(M1Bar *bar) override;
 	void OnMdError(CThostFtdcRspInfoField *pRspInfo) override;
     
-    void OnTimer1S(std::string time) override;
-
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
 	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) override;
@@ -251,4 +340,5 @@ public:
     void OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
 	void OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo)	override;
 
+    void OnIdle() override;
 };

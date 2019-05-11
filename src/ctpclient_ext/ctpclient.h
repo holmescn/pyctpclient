@@ -176,7 +176,7 @@ class CtpClient
             if (pRsp) {
                 memcpy(&base, pRsp, sizeof *pRsp);
             } else {
-                memset(pRsp, 0, sizeof *pRsp);
+                memset(&base, 0, sizeof *pRsp);
             }
         }
     };

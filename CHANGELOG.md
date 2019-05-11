@@ -1,5 +1,10 @@
 # pyctpclient Change History
 
+## 0.2.1a1
+
+1. `on_rsp_market_data` 增加 `request_id`
+2. `query_market_data` 增加 `request_id`，默认值为 0
+
 ## 0.2.0a3
 
 1. Change architecture of the program: add a message queue between CTP SPI and CTP client.

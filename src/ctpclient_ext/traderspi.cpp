@@ -146,6 +146,9 @@ void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMa
 {
     auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryDepthMarketData, pRspInfo, nRequestID, bIsLast);
     r->SetRsp(pDepthMarketData);
+    if (pDepthMarketData == nullptr && r->RspInfo.ErrorID == 0) {
+        r->RspInfo.ErrorID = 16;
+    }
     _client->Push(r);
 }
 

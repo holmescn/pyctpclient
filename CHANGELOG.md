@@ -1,10 +1,11 @@
 # pyctpclient Change History
 
-## 0.2.0a1
+## 0.2.0a3
 
 1. Change architecture of the program: add a message queue between CTP SPI and CTP client.
 2. Change `run` to `init`
 3. Must call `join` after `init`
+4. FIX copy nullptr of response.
 
 ## 0.1.4a0
 

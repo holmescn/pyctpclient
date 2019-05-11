@@ -161,6 +161,8 @@ class CtpClient
         : type(type_), nRequestID(nRequestID_), nReason(0), bIsLast(bIsLast_) {
             if (pRspInfo) {
                 memcpy(&RspInfo, pRspInfo, sizeof RspInfo);
+            } else {
+                memset(&RspInfo, 0, sizeof RspInfo);
             }
         }
         Response(const Response &other) = default;
@@ -171,7 +173,11 @@ class CtpClient
 
         template<class T>
         inline void SetRsp(T *pRsp) {
-            memcpy(&base, pRsp, sizeof *pRsp);
+            if (pRsp) {
+                memcpy(&base, pRsp, sizeof *pRsp);
+            } else {
+                memset(pRsp, 0, sizeof *pRsp);
+            }
         }
     };
 

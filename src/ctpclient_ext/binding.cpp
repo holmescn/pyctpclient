@@ -959,7 +959,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("query_trading_account", &CtpClient::QueryTradingAccount)
     .def("query_investor_position", &CtpClient::QueryInvestorPosition)
     .def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
-    .def("query_market_data", &CtpClient::QueryMarketData, arg("instrument_id"))
+    .def("query_market_data", &CtpClient::QueryMarketData, (arg("instrument_id"), arg("request_id")=0))
     .def("query_settlement_info", &CtpClient::QuerySettlementInfo)
     .def("insert_order", &CtpClient::InsertOrder,
       (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),

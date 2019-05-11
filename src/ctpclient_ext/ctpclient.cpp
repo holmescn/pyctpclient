@@ -266,7 +266,7 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
 		OnRspQryInvestorPosition(&r->InvestorPosition, &r->RspInfo, r->bIsLast);
 		break;
   case ResponseType::OnRspQryDepthMarketData:
-		OnRspQryDepthMarketData(&r->DepthMarketData, &r->RspInfo, r->bIsLast);
+		OnRspQryDepthMarketData(&r->DepthMarketData, &r->RspInfo, r->nRequestID, r->bIsLast);
 		break;
   case ResponseType::OnRspQrySettlementInfo:
 		OnRspQrySettlementInfo(&r->SettlementInfo, &r->RspInfo);
@@ -543,17 +543,17 @@ void CtpClient::QueryInvestorPositionDetail()
 	}, _queryTick);
 }
 
-void CtpClient::QueryMarketData(std::string instrumentId)
+void CtpClient::QueryMarketData(std::string instrumentId, int requestId)
 {
 	_queryTick += std::chrono::milliseconds(1200);
-	std::async(std::launch::async, [this](std::string instrumentId, std::chrono::steady_clock::time_point until) {
+	std::async(std::launch::async, [this, requestId](std::string instrumentId, std::chrono::steady_clock::time_point until) {
 		std::this_thread::sleep_until(until);
 
 		CThostFtdcQryDepthMarketDataField req;
 		memset(&req, 0, sizeof req);
 		strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
 
-		assert_request(_tdApi->ReqQryDepthMarketData(&req, 0));
+		assert_request(_tdApi->ReqQryDepthMarketData(&req, requestId));
 	}, instrumentId, _queryTick);
 }
 
@@ -972,10 +972,10 @@ void CtpClientWrap::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDet
 	}
 }
 
-void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
 	if (override fn = get_override("on_rsp_market_data")) {
-		fn(pDepthMarketData, pRspInfo, bIsLast);
+		fn(pDepthMarketData, pRspInfo, nRequestID, bIsLast);
 	}
 }
 

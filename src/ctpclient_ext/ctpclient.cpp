@@ -90,41 +90,9 @@ tuple CtpClient::GetApiVersion()
 	return boost::python::make_tuple(v1, v2);
 }
 
-void CtpClient::Run()
+void CtpClient::Init()
 {
 	using namespace boost::filesystem;
-
-	_thread = std::thread([this](std::shared_future<void> exitSignal) {
-		size_t timeout = 1024;
-		auto timer = std::chrono::steady_clock::now();
-    	while (exitSignal.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout) {
-			CtpClient::Response *r = nullptr;
-			{
-				std::unique_lock<std::mutex> lk(_queueMutex);
-				if(_queueConditionVariable.wait_for(lk, timeout * 1ms, [this]{ return !_q.empty(); })) {
-					r = _q.front();
-					_q.pop();
-					auto duration = std::chrono::steady_clock::now() - timer;
-					if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 5s && timeout > 2) {
-						timeout /= 2;
-					}
-				} else {
-					OnIdle();
-
-					auto duration = std::chrono::steady_clock::now() - timer;
-					if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) < 1s) {
-						timeout *= 2;
-					}
-					timer = std::chrono::steady_clock::now();
-				}
-			}
-
-			if (r) {
-				ProcessResponse(r);
-				delete r;
-			}
-		}
-	}, g_exitSignal);
 
 	if (_flowPath == "") {
 		auto tmpPath = temp_directory_path() / "ctp";
@@ -159,11 +127,42 @@ void CtpClient::Run()
 		_tdApi->RegisterFront(const_cast<char*>(_tdAddr.c_str()));
 		_tdApi->Init();
 	}
+
+	// PyEval_RestoreThread(_save);
 }
 
 void CtpClient::Join()
 {
-	_thread.join();
+	size_t timeout = 1024;
+	auto timer = std::chrono::steady_clock::now();
+	while (g_exitSignal.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout) {
+		CtpClient::Response *r = nullptr;
+		{
+			std::unique_lock<std::mutex> lk(_queueMutex);
+			if(_queueConditionVariable.wait_for(lk, timeout * 1ms, [this]{ return !_q.empty(); })) {
+				r = _q.front();
+				_q.pop();
+
+				auto duration = std::chrono::steady_clock::now() - timer;
+				if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 5s && timeout > 2) {
+					timeout /= 2;
+				}
+			} else {
+				auto duration = std::chrono::steady_clock::now() - timer;
+				if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) < 500ms) {
+					timeout *= 2;
+				} else {
+					OnIdle();
+				}
+				timer = std::chrono::steady_clock::now();
+			}
+		}
+
+		if (r) {
+			ProcessResponse(r);
+			delete r;
+		}
+	}
 }
 
 void CtpClient::Exit()
@@ -323,6 +322,8 @@ void CtpClient::SubscribeMarketData(boost::python::list instrumentIds)
 
 void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
 {
+	GIL_lock lk;
+
 	size_t N = len(instrumentIds);
 	if (N == 0) return;
 

@@ -96,7 +96,6 @@ class CtpClient
     std::string _userId;
     std::string _password;
     std::chrono::steady_clock::time_point _queryTick = std::chrono::steady_clock::now();
-    std::thread _thread;
 
     enum class ResponseType : uint32_t {
         OnMdFrontConnected,
@@ -195,7 +194,7 @@ public:
     CtpClient& operator=(CtpClient&&) = delete;
     virtual ~CtpClient();
 
-    void Run();
+    void Init();
     void Join();
     void Exit();
 

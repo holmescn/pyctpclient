@@ -956,11 +956,11 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("td_login", &CtpClient::TdLogin)
     .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
     .def("query_order", &CtpClient::QueryOrder)
+    .def("query_trade", &CtpClient::QueryTrade)
     .def("query_trading_account", &CtpClient::QueryTradingAccount)
     .def("query_investor_position", &CtpClient::QueryInvestorPosition)
     .def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
     .def("query_market_data", &CtpClient::QueryMarketData, (arg("instrument_id"), arg("request_id")=0))
-    .def("query_settlement_info", &CtpClient::QuerySettlementInfo)
     .def("insert_order", &CtpClient::InsertOrder,
       (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),
        arg("volume"), arg("order_price_type")=OPT_LimitPrice,
@@ -990,7 +990,6 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_rsp_investor_position", pure_virtual(&CtpClient::OnRspQryInvestorPosition))
     .def("on_rsp_investor_position_detail", pure_virtual(&CtpClient::OnRspQryInvestorPositionDetail))
     .def("on_rsp_market_data", pure_virtual(&CtpClient::OnRspQryDepthMarketData))
-    .def("on_rsp_settlement_info", pure_virtual(&CtpClient::OnRspQrySettlementInfo))
     .def("on_idle", pure_virtual(&CtpClient::OnIdle))
     ;
 

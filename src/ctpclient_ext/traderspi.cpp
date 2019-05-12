@@ -152,13 +152,6 @@ void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMa
     _client->Push(r);
 }
 
-void TraderSpi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
-{
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQrySettlementInfo, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pSettlementInfo);
-    _client->Push(r);
-}
-
 void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryInvestorPositionDetail, pRspInfo, nRequestID, bIsLast);

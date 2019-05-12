@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <atomic>
 #include <queue>
 #include <chrono>
 #include <thread>
@@ -95,7 +96,16 @@ class CtpClient
     std::string _brokerId;
     std::string _userId;
     std::string _password;
-    std::chrono::steady_clock::time_point _queryTick = std::chrono::steady_clock::now();
+    std::thread _thread;
+
+    enum class RequestType {
+        QueryOrder,
+        QueryTrade,
+        QueryTradingAccount,
+        QueryInvestorPosition,
+        QueryInvestorPositionDetail,
+        QueryMarketData
+    };
 
     enum class ResponseType : uint32_t {
         OnMdFrontConnected,
@@ -126,9 +136,21 @@ class CtpClient
         OnRspQryTrade,
         OnRspQryTradingAccount,
         OnRspQryInvestorPosition,
-        OnRspQryDepthMarketData,
-        OnRspQrySettlementInfo,
-        OnRspQryInvestorPositionDetail
+        OnRspQryInvestorPositionDetail,
+        OnRspQryDepthMarketData
+    };
+
+    struct Request {
+        RequestType type;
+        union {
+            CThostFtdcQryOrderField QryOrder;
+            CThostFtdcQryTradeField QryTrade;
+            CThostFtdcQryTradingAccountField QryTradingAccount;
+            CThostFtdcQryInvestorPositionField QryInvestorPosition;
+            CThostFtdcQryInvestorPositionDetailField QryInvestorPositionDetail;
+            CThostFtdcQryDepthMarketDataField QryDepthMarketData;
+        };
+        int nRequestID;
     };
 
     struct Response {
@@ -181,9 +203,14 @@ class CtpClient
         }
     };
 
-    std::queue<CtpClient::Response*> _q;
-    std::mutex _queueMutex;
-    std::condition_variable _queueConditionVariable;
+    std::atomic_flag _requestLock = ATOMIC_FLAG_INIT;
+    std::queue<CtpClient::Request*> _requestQueue;
+    std::queue<CtpClient::Response*> _responseQueue;
+    std::mutex _requestQueueMutex;
+    std::mutex _responseQueueMutex;
+    std::condition_variable _requestQueueConditionVariable;
+    std::condition_variable _responseQueueConditionVariable;
+    void ProcessRequest(CtpClient::Request *r);
     void ProcessResponse(CtpClient::Response *r);
     void Push(CtpClient::Response *r);
 
@@ -248,15 +275,15 @@ public:
 
 public:
     // TraderApi
-    void TdLogin();
-    void ConfirmSettlementInfo();
     void QueryOrder();
     void QueryTrade();
     void QueryTradingAccount();
     void QueryInvestorPosition();
     void QueryInvestorPositionDetail();
     void QueryMarketData(std::string instrumentId, int requestId);
-    void QuerySettlementInfo();
+
+    void TdLogin();
+    void ConfirmSettlementInfo();
     void InsertOrder(std::string instrumentId,
                      Direction direction,
                      OffsetFlag offsetFlag,
@@ -273,7 +300,6 @@ public:
                      bool userForceClose,
                      int requestID
                     );
-
     void OrderAction(boost::shared_ptr<CThostFtdcOrderField> pOrder,
                      OrderActionFlag actionFlag,
                      TThostFtdcPriceType limitPrice,
@@ -304,7 +330,6 @@ public:
     virtual void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
     virtual void OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
     virtual void OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
-	virtual void OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo)	= 0;
 };
 
 
@@ -343,7 +368,6 @@ public:
     void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
     void OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
     void OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
-	void OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettlementInfo, CThostFtdcRspInfoField *pRspInfo)	override;
 
     void OnIdle() override;
 };

@@ -1,5 +1,10 @@
 # pyctpclient Change History
 
+## 0.2.2a1
+
+1. Add request queue for query.
+2. Add `atomic_flag` as request lock.
+
 ## 0.2.1a1
 
 1. `on_rsp_market_data` 增加 `request_id`

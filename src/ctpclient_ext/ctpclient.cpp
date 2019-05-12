@@ -139,7 +139,6 @@ void CtpClient::Init()
             }
 
             if (r) {
-                std::cerr << "Process Request: " << time(nullptr) << std::endl;
                 ProcessRequest(r);
                 delete r;
             }

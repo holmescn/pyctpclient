@@ -203,7 +203,7 @@ class CtpClient
         }
     };
 
-    std::atomic_flag _requestLock = ATOMIC_FLAG_INIT;
+    std::atomic<bool> _requestResponsed = true;
     std::queue<CtpClient::Request*> _requestQueue;
     std::queue<CtpClient::Response*> _responseQueue;
     std::mutex _requestQueueMutex;

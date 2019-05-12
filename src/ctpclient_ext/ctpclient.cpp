@@ -130,11 +130,13 @@ void CtpClient::Init()
     _thread = std::thread([this](std::shared_future<void> exitSignal) {
         while (exitSignal.wait_for(1100ms) == std::future_status::timeout) {
             CtpClient::Request *r = nullptr;
-            if (!_requestLock.test_and_set(std::memory_order_acquire)) {
+            {
                 std::unique_lock<std::mutex> lk(_requestQueueMutex);
                 if(_requestQueueConditionVariable.wait_for(lk, 10ms, [this]{ return !_requestQueue.empty(); })) {
-                    r = _requestQueue.front();
-                    _requestQueue.pop();
+                    if (_requestResponsed.load(std::memory_order_acquire)) {
+                        r = _requestQueue.front();
+                        _requestQueue.pop();
+                    }
                 }
             }
 
@@ -298,7 +300,7 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
         break;
     case ResponseType::OnRspQryOrder:
         OnRspQryOrder(&r->Order, &r->RspInfo, r->bIsLast);
-        _requestLock.clear(std::memory_order_release);
+        _requestLock.save(std::memory_order_release);
         break;
     case ResponseType::OnRspQryTrade:
         OnRspQryTrade(&r->Trade, &r->RspInfo, r->bIsLast);

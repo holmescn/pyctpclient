@@ -15,15 +15,13 @@
  */
 #pragma once
 #include <atomic>
-#include <queue>
 #include <chrono>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <boost/python.hpp>
 #include <boost/shared_ptr.hpp>
 #include "ThostFtdcUserApiStruct.h"
 #include "bar.h"
+#include "concurrentqueue.h"
 
 class MdSpi;
 class TraderSpi;
@@ -203,13 +201,9 @@ class CtpClient
         }
     };
 
-    std::atomic<bool> _requestResponsed;
-    std::queue<CtpClient::Request*> _requestQueue;
-    std::queue<CtpClient::Response*> _responseQueue;
-    std::mutex _requestQueueMutex;
-    std::mutex _responseQueueMutex;
-    std::condition_variable _requestQueueConditionVariable;
-    std::condition_variable _responseQueueConditionVariable;
+    std::atomic_bool _requestResponsed;
+    moodycamel::ConcurrentQueue<CtpClient::Request*>  _requestQueue;
+    moodycamel::ConcurrentQueue<CtpClient::Response*> _responseQueue;
     void ProcessRequest(CtpClient::Request *r);
     void ProcessResponse(CtpClient::Response *r);
     void Push(CtpClient::Response *r);

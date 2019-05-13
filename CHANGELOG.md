@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.2.3a0
+
+1. Use `moodycamel::ConcurrentQueue` instead of `std::queue`.
+
 ## 0.2.2a2
 
 1. Add request queue for query.

@@ -15,10 +15,8 @@
  */
 #include <ctime>
 #include <csignal>
-#include <chrono>
 #include <string>
 #include <future>
-#include <thread>
 #include <iostream>
 #include <boost/python.hpp>
 #include <boost/filesystem.hpp>
@@ -28,7 +26,6 @@
 #include "mdspi.h"
 #include "traderspi.h"
 #include "ctpclient.h"
-#include "GILhelper.h"
 
 using namespace boost::python;
 using namespace std::chrono_literals;
@@ -127,24 +124,16 @@ void CtpClient::Init()
         _tdApi->Init();
     }
 
-	_requestResponsed = true;
+    _requestResponsed = true;
     _thread = std::thread([this](std::shared_future<void> exitSignal) {
         while (exitSignal.wait_for(1100ms) == std::future_status::timeout) {
-            CtpClient::Request *r = nullptr;
-            {
-                std::unique_lock<std::mutex> lk(_requestQueueMutex);
-                if(_requestQueueConditionVariable.wait_for(lk, 10ms, [this]{ return !_requestQueue.empty(); })) {
-                    if (_requestResponsed.load(std::memory_order_acquire)) {
-                        r = _requestQueue.front();
-                        _requestQueue.pop();
-                    }
+            if (_requestResponsed.load(std::memory_order_acquire)) {
+                CtpClient::Request *req = nullptr;
+                if (_requestQueue.try_dequeue(req)) {
+                    _requestResponsed.store(false, std::memory_order_release);
+                    ProcessRequest(req);
+                    delete req;
                 }
-            }
-
-            if (r) {
-				_requestResponsed.store(false, std::memory_order_release);
-                ProcessRequest(r);
-                delete r;
             }
         }
     }, g_exitSignal);
@@ -152,34 +141,18 @@ void CtpClient::Init()
 
 void CtpClient::Join()
 {
-    size_t timeout = 1024;
     auto timer = std::chrono::steady_clock::now();
-    while (g_exitSignal.wait_for(std::chrono::microseconds(1)) == std::future_status::timeout) {
-        CtpClient::Response *r = nullptr;
-        {
-            std::unique_lock<std::mutex> lk(_responseQueueMutex);
-            if(_responseQueueConditionVariable.wait_for(lk, timeout * 1ms, [this]{ return !_responseQueue.empty(); })) {
-                r = _responseQueue.front();
-                _responseQueue.pop();
-
-                auto duration = std::chrono::steady_clock::now() - timer;
-                if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 5s && timeout > 2) {
-                    timeout /= 2;
-                }
-            } else {
-                auto duration = std::chrono::steady_clock::now() - timer;
-                if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) < 500ms) {
-                    timeout *= 2;
-                } else {
-                    OnIdle();
-                }
+    while (g_exitSignal.wait_for(1ms) == std::future_status::timeout) {
+        CtpClient::Response *rsp = nullptr;
+        if (_responseQueue.try_dequeue(rsp)) {
+            ProcessResponse(rsp);
+            delete rsp;
+        } else {
+            auto duration = std::chrono::steady_clock::now() - timer;
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 1s) {
+                OnIdle();
                 timer = std::chrono::steady_clock::now();
             }
-        }
-
-        if (r) {
-            ProcessResponse(r);
-            delete r;
         }
     }
 
@@ -193,9 +166,7 @@ void CtpClient::Exit()
 
 void CtpClient::Push(CtpClient::Response *r)
 {
-    std::lock_guard<std::mutex> lk(_responseQueueMutex);
-    _responseQueue.push(r);
-    _responseQueueConditionVariable.notify_one();
+    _responseQueue.enqueue(r);
 }
 
 void CtpClient::ProcessRequest(CtpClient::Request *r)
@@ -372,8 +343,6 @@ void CtpClient::SubscribeMarketData(boost::python::list instrumentIds)
 
 void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
 {
-    GIL_lock lk;
-
     size_t N = len(instrumentIds);
     if (N == 0) return;
 
@@ -520,9 +489,7 @@ void CtpClient::QueryOrder()
     strncpy(r->QryOrder.BrokerID, _brokerId.c_str(), sizeof r->QryOrder.BrokerID);
     strncpy(r->QryOrder.InvestorID, _userId.c_str(), sizeof r->QryOrder.InvestorID);
 
-    std::lock_guard<std::mutex> lk(_requestQueueMutex);
-    _requestQueue.push(r);
-    _requestQueueConditionVariable.notify_one();
+    _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryTrade()
@@ -533,9 +500,7 @@ void CtpClient::QueryTrade()
     strncpy(r->QryTrade.BrokerID, _brokerId.c_str(), sizeof r->QryTrade.BrokerID);
     strncpy(r->QryTrade.InvestorID, _userId.c_str(), sizeof r->QryTrade.InvestorID);
 
-    std::lock_guard<std::mutex> lk(_requestQueueMutex);
-    _requestQueue.push(r);
-    _requestQueueConditionVariable.notify_one();
+    _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryTradingAccount()
@@ -547,9 +512,7 @@ void CtpClient::QueryTradingAccount()
     strncpy(r->QryTradingAccount.InvestorID, _userId.c_str(), sizeof r->QryTradingAccount.InvestorID);
     strncpy(r->QryTradingAccount.CurrencyID, "CNY", sizeof r->QryTradingAccount.CurrencyID);
 
-    std::lock_guard<std::mutex> lk(_requestQueueMutex);
-    _requestQueue.push(r);
-    _requestQueueConditionVariable.notify_one();
+    _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryInvestorPosition()
@@ -562,9 +525,7 @@ void CtpClient::QueryInvestorPosition()
     // 不填写合约则返回所有持仓
     strncpy(r->QryInvestorPosition.InstrumentID, "", sizeof r->QryInvestorPosition.InstrumentID);
 
-    std::lock_guard<std::mutex> lk(_requestQueueMutex);
-    _requestQueue.push(r);
-    _requestQueueConditionVariable.notify_one();
+    _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryInvestorPositionDetail()
@@ -577,9 +538,7 @@ void CtpClient::QueryInvestorPositionDetail()
     // 不填写合约则返回所有持仓
     strncpy(r->QryInvestorPositionDetail.InstrumentID, "", sizeof r->QryInvestorPositionDetail.InstrumentID);
 
-    std::lock_guard<std::mutex> lk(_requestQueueMutex);
-    _requestQueue.push(r);
-    _requestQueueConditionVariable.notify_one();
+    _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryMarketData(std::string instrumentId, int nRequestID)
@@ -590,9 +549,7 @@ void CtpClient::QueryMarketData(std::string instrumentId, int nRequestID)
     strncpy(r->QryDepthMarketData.InstrumentID, instrumentId.c_str(), sizeof r->QryDepthMarketData.InstrumentID);
     r->nRequestID = nRequestID;
 
-    std::lock_guard<std::mutex> lk(_requestQueueMutex);
-    _requestQueue.push(r);
-    _requestQueueConditionVariable.notify_one();
+    _requestQueue.enqueue(r);
 }
 
 void CtpClient::InsertOrder(

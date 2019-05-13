@@ -316,33 +316,33 @@ str tostr_ActionFlag(T const *this_)
 }
 
 template<class T>
-str tostr_OrderSubmitStatus(T const *this_)
+OrderSubmitStatus tostr_OrderSubmitStatus(T const *this_)
 {
   switch(this_->OrderSubmitStatus) {
-    case THOST_FTDC_OSS_InsertSubmitted: return str("insert_submitted");
-    case THOST_FTDC_OSS_CancelSubmitted: return str("cancel_submitted");
-    case THOST_FTDC_OSS_Accepted:        return str("accepted");
-    case THOST_FTDC_OSS_InsertRejected:  return str("insert_rejected");
-    case THOST_FTDC_OSS_CancelRejected:  return str("cancel_rejected");
-    case THOST_FTDC_OSS_ModifyRejected:  return str("modify_rejected");
-    default: return str("unknown");
+    case THOST_FTDC_OSS_InsertSubmitted: return OSS_InsertSubmitted;
+    case THOST_FTDC_OSS_CancelSubmitted: return OSS_CancelSubmitted;
+    case THOST_FTDC_OSS_Accepted:        return OSS_Accepted;
+    case THOST_FTDC_OSS_InsertRejected:  return OSS_InsertRejected;
+    case THOST_FTDC_OSS_CancelRejected:  return OSS_CancelRejected;
+    case THOST_FTDC_OSS_ModifyRejected:  return OSS_ModifyRejected;
+    default: throw std::invalid_argument("unknown order submit status");
   }
 }
 
 template<class T>
-str tostr_OrderStatus(T const *this_)
+OrderStatus tostr_OrderStatus(T const *this_)
 {
   switch(this_->OrderStatus) {
-    case THOST_FTDC_OST_AllTraded: return str("all_traded");
-    case THOST_FTDC_OST_PartTradedQueueing: return str("part_traded_queueing");
-    case THOST_FTDC_OST_PartTradedNotQueueing: return str("part_traded_not_queueing");
-    case THOST_FTDC_OST_NoTradeQueueing:  return str("no_trade_queueing");
-    case THOST_FTDC_OST_NoTradeNotQueueing:  return str("no_trade_not_queueing");
-    case THOST_FTDC_OST_Canceled:  return str("canceled");
-    case THOST_FTDC_OST_Unknown:  return str("unknown");
-    case THOST_FTDC_OST_NotTouched:  return str("not_touched");
-    case THOST_FTDC_OST_Touched:  return str("touched");
-    default: return str("error");
+    case THOST_FTDC_OST_AllTraded:          return OST_AllTraded;
+    case THOST_FTDC_OST_PartTradedQueueing: return OST_PartTradedQueueing;
+    case THOST_FTDC_OST_PartTradedNotQueueing: return OST_PartTradedNotQueueing;
+    case THOST_FTDC_OST_NoTradeQueueing:     return OST_NoTradeQueueing;
+    case THOST_FTDC_OST_NoTradeNotQueueing:  return OST_NoTradeNotQueueing;
+    case THOST_FTDC_OST_Canceled:    return OST_Canceled;
+    case THOST_FTDC_OST_Unknown:     return OST_Unknown;
+    case THOST_FTDC_OST_NotTouched:  return OST_NotTouched;
+    case THOST_FTDC_OST_Touched:     return OST_Touched;
+    default: throw std::invalid_argument("unknown order status");
   }
 }
 
@@ -403,13 +403,13 @@ str tostr_TradeSource(T const* this_)
 }
 
 template<class T>
-str tostr_OrderActionStatus(T const* this_)
+OrderActionStatus tostr_OrderActionStatus(T const* this_)
 {
   switch(this_->OrderActionStatus) {
-    case THOST_FTDC_OAS_Submitted: return str("submitted");
-    case THOST_FTDC_OAS_Accepted: return str("accepted");
-    case THOST_FTDC_OAS_Rejected: return str("rejected");
-    default: return str("unknown");
+    case THOST_FTDC_OAS_Submitted: return OAS_Submitted;
+    case THOST_FTDC_OAS_Accepted: return OAS_Accepted;
+    case THOST_FTDC_OAS_Rejected: return OAS_Rejected;
+    default: throw std::invalid_argument("unknown order action status");
   }
 }
 
@@ -494,8 +494,33 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("BID_PRICE_LESSER_THAN_STOP_PRICE", CC_BidPriceLesserThanStopPrice)
     .value("BID_PRICE_LESSER_EQUAL_STOP_PRICE", CC_BidPriceLesserEqualStopPrice);
   enum_<OrderActionFlag>("OrderActionFlag")
-    .value("Delete", AF_Delete)
-    .value("Modify", AF_Modify);
+    .value("DELETE", AF_Delete)
+    .value("MODIFY", AF_Modify);
+
+  enum_<OrderStatus>("OrderStatus")
+    .value("ALL_TRADED", OST_AllTraded)
+    .value("PART_TRADED_QUEUEING", OST_PartTradedQueueing)
+    .value("PART_TRADED_NOT_QUEUEING", OST_PartTradedNotQueueing)
+    .value("NO_TRADE_QUEUEING", OST_NoTradeQueueing)
+    .value("NO_TRADE_NOT_QUEUEING", OST_NoTradeNotQueueing)
+    .value("CANCELED", OST_Canceled)
+    .value("UNKNOWN", OST_Unknown)
+    .value("NOT_TOUCHED", OST_NotTouched)
+    .value("TOUCHED", OST_Touched);
+
+  enum_<OrderSubmitStatus>("OrderSubmitStatus")
+    .value("INSERT_SUBMITTED", OSS_InsertSubmitted)
+    .value("CANCEL_SUBMITTED", OSS_CancelSubmitted)
+    .value("MODIFY_SUBMITTED", OSS_ModifySubmitted)
+    .value("ACCEPTED", OSS_Accepted)
+    .value("INSERT_REJECTED", OSS_InsertRejected)
+    .value("CANCEL_REJECTED", OSS_CancelRejected)
+    .value("MODIFY_REJECTED", OSS_ModifyRejected);
+
+  enum_<OrderActionStatus>("OrderActionStatus")
+    .value("SUBMITTED", OAS_Submitted)
+    .value("ACCEPTED", OAS_Accepted)
+    .value("REJECTED", OAS_Rejected);
 
   class_<M1Bar>("M1Bar")
     .add_property("instrument_id", tostr(&M1Bar::InstrumentID))

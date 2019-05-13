@@ -142,12 +142,14 @@ void CtpClient::Init()
 void CtpClient::Join()
 {
     auto timer = std::chrono::steady_clock::now();
-    while (g_exitSignal.wait_for(1ms) == std::future_status::timeout) {
+    while (g_exitSignal.wait_for(10ms) == std::future_status::timeout) {
         CtpClient::Response *rsp = nullptr;
-        if (_responseQueue.try_dequeue(rsp)) {
+        while (_responseQueue.try_dequeue(rsp)) {
             ProcessResponse(rsp);
             delete rsp;
-        } else {
+        }
+
+        {
             auto duration = std::chrono::steady_clock::now() - timer;
             if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 1s) {
                 OnIdle();

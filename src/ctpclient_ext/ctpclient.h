@@ -79,6 +79,31 @@ enum ContingentCondition {
     CC_BidPriceLesserThanStopPrice, CC_BidPriceLesserEqualStopPrice
 };
 enum OrderActionFlag { AF_Delete, AF_Modify };
+enum OrderStatus {
+    OST_AllTraded,
+    OST_PartTradedQueueing,
+    OST_PartTradedNotQueueing,
+    OST_NoTradeQueueing,
+    OST_NoTradeNotQueueing,
+    OST_Canceled,
+    OST_Unknown,
+    OST_NotTouched,
+    OST_Touched
+};
+enum OrderSubmitStatus {
+    OSS_InsertSubmitted,
+    OSS_CancelSubmitted,
+    OSS_ModifySubmitted,
+    OSS_Accepted,
+    OSS_InsertRejected,
+    OSS_CancelRejected,
+    OSS_ModifyRejected
+};
+enum OrderActionStatus {
+    OAS_Submitted,
+    OAS_Accepted,
+    OAS_Rejected
+};
 
 #pragma endregion // Enums
 

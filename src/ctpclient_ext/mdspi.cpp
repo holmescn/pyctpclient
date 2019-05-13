@@ -73,6 +73,8 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketDat
     TickBar tickBar;
     memset(&tickBar, 0, sizeof tickBar);
     snprintf(tickBar.UpdateTime, 16, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
+    strncpy(tickBar.TradingDay, pDepthMarketData->TradingDay, sizeof tickBar.TradingDay);
+    strncpy(tickBar.ActionDay, pDepthMarketData->ActionDay, sizeof tickBar.ActionDay);
     strncpy(tickBar.InstrumentID, pDepthMarketData->InstrumentID, sizeof tickBar.InstrumentID);
     tickBar.Price = pDepthMarketData->LastPrice;
     tickBar.Volume = pDepthMarketData->Volume;
@@ -82,6 +84,8 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketDat
     M1Bar m1Bar;
     memset(&m1Bar, 0, sizeof m1Bar);
     memcpy(m1Bar.InstrumentID, pDepthMarketData->InstrumentID, sizeof m1Bar.InstrumentID);
+    memcpy(m1Bar.TradingDay, pDepthMarketData->TradingDay, sizeof m1Bar.TradingDay);
+    memcpy(m1Bar.ActionDay, pDepthMarketData->ActionDay, sizeof m1Bar.ActionDay);
     memcpy(m1Bar.UpdateTime, pDepthMarketData->UpdateTime, 5);
 
     std::string m1Now(m1Bar.UpdateTime);

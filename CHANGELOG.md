@@ -4,6 +4,7 @@
 
 1. Use `moodycamel::ConcurrentQueue` instead of `std::queue`.
 2. Change `OrderSubmitStatus` `OrderStatus` and `OrderActionStatus` to enumeration, instead of string.
+3. Add TradingDay and ActionDay to M1Bar and TickBar.
 
 ## 0.2.2a2
 

@@ -17,6 +17,8 @@
 
 struct M1Bar {
 	TThostFtdcInstrumentIDType InstrumentID;
+	TThostFtdcDateType  TradingDay;
+	TThostFtdcDateType  ActionDay;
 	TThostFtdcTimeType  UpdateTime;
 	TThostFtdcPriceType OpenPrice;
 	TThostFtdcPriceType HighestPrice;
@@ -33,6 +35,8 @@ struct M1Bar {
 
 struct TickBar {
 	TThostFtdcInstrumentIDType InstrumentID;
+	TThostFtdcDateType  TradingDay;
+	TThostFtdcDateType  ActionDay;
 	char UpdateTime[16];
 	TThostFtdcPriceType Price;
 	TThostFtdcMoneyType	Turnover;

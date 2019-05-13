@@ -127,6 +127,7 @@ void CtpClient::Init()
         _tdApi->Init();
     }
 
+	_requestResponsed = true;
     _thread = std::thread([this](std::shared_future<void> exitSignal) {
         while (exitSignal.wait_for(1100ms) == std::future_status::timeout) {
             CtpClient::Request *r = nullptr;
@@ -141,6 +142,7 @@ void CtpClient::Init()
             }
 
             if (r) {
+				_requestResponsed.store(false, std::memory_order_release);
                 ProcessRequest(r);
                 delete r;
             }
@@ -300,27 +302,27 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
         break;
     case ResponseType::OnRspQryOrder:
         OnRspQryOrder(&r->Order, &r->RspInfo, r->bIsLast);
-        _requestLock.save(std::memory_order_release);
+        _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTrade:
         OnRspQryTrade(&r->Trade, &r->RspInfo, r->bIsLast);
-        _requestLock.clear(std::memory_order_release);
+        _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTradingAccount:
         OnRspQryTradingAccount(&r->TradingAccount, &r->RspInfo, r->bIsLast);
-        _requestLock.clear(std::memory_order_release);
+        _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPosition:
         OnRspQryInvestorPosition(&r->InvestorPosition, &r->RspInfo, r->bIsLast);
-        _requestLock.clear(std::memory_order_release);
+        _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryDepthMarketData:
         OnRspQryDepthMarketData(&r->DepthMarketData, &r->RspInfo, r->nRequestID, r->bIsLast);
-        _requestLock.clear(std::memory_order_release);
+        _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPositionDetail:
         OnRspQryInvestorPositionDetail(&r->InvestorPositionDetail, &r->RspInfo, r->bIsLast);
-        _requestLock.clear(std::memory_order_release);
+        _requestResponsed.store(true, std::memory_order_release);
         break;
     default:
         throw std::invalid_argument("unhandled response type.");

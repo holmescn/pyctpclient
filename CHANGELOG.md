@@ -1,9 +1,9 @@
 # pyctpclient Change History
 
-## 0.2.2a1
+## 0.2.2a2
 
 1. Add request queue for query.
-2. Add `atomic_flag` as request lock.
+2. Add `atomic_bool` as request lock.
 
 ## 0.2.1a1
 

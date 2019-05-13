@@ -203,7 +203,7 @@ class CtpClient
         }
     };
 
-    std::atomic<bool> _requestResponsed = true;
+    std::atomic<bool> _requestResponsed;
     std::queue<CtpClient::Request*> _requestQueue;
     std::queue<CtpClient::Response*> _responseQueue;
     std::mutex _requestQueueMutex;

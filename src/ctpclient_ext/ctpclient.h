@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <map>
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -138,9 +139,6 @@ class CtpClient
         OnSubMarketData,
         OnUnSubMarketData,
         OnRtnMarketData,
-        OnTick,
-        On1Min,
-        On1MinTick,
         OnMdError,
 
         OnTdFrontConnected,
@@ -237,6 +235,7 @@ class CtpClient
     friend class TraderSpi;
 protected:
     boost::python::list _instrumentIds;
+	std::map<std::string, M1Bar> _m1Bars;
 
 public:
     CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);

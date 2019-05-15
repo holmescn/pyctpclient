@@ -613,22 +613,16 @@ void CtpClient::InsertOrder(
     OffsetFlag offsetFlag,
     TThostFtdcPriceType limitPrice,
     TThostFtdcVolumeType volume,
-    OrderPriceType orderPriceType,
-    HedgeFlag hedgeFlag,
-    TimeCondition timeCondition,
-    VolumeCondition volumeCondition,
-    ContingentCondition contingentCondition,
-    TThostFtdcVolumeType minVolume,
-    TThostFtdcPriceType stopPrice,
-    bool isAutoSuspend,
-    bool userForceClose,
-    int requestID)
+    int requestId,
+    boost::python::dict extraOptions)
 {
     CThostFtdcInputOrderField req;
     memset(&req, 0, sizeof req);
     strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
     strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
     strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
+    req.VolumeTotalOriginal = volume;
+    req.LimitPrice = limitPrice;
 
     switch(direction) {
         case D_Buy:
@@ -667,7 +661,9 @@ void CtpClient::InsertOrder(
             throw std::invalid_argument("offset_flag");
     }
 
-    switch (orderPriceType) {
+    if (extraOptions.has_key("order_price_type")) {
+        OrderPriceType opt = extract<OrderPriceType>(extraOptions["order_price_type"]);
+        switch (opt) {
         case OPT_AnyPrice:
             req.OrderPriceType = THOST_FTDC_OPT_AnyPrice;
             break;
@@ -718,9 +714,14 @@ void CtpClient::InsertOrder(
             break;
         default:
             throw std::invalid_argument("order_price_type");
+        }
+    } else {
+        req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
     }
 
-    switch (hedgeFlag) {
+    if (extraOptions.has_key("hedge_flag")) {
+        HedgeFlag hf = extract<HedgeFlag>(extraOptions["hedge_flag"]);
+        switch (hf) {
         case HF_Speculation:
             req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
             break;
@@ -735,9 +736,14 @@ void CtpClient::InsertOrder(
             break;
         default:
             throw std::invalid_argument("hedge_flag");
+        }
+    } else {
+        req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
     }
 
-    switch (timeCondition) {
+    if (extraOptions.has_key("time_condition")) {
+        TimeCondition tc = extract<TimeCondition>(extraOptions["time_conditino"]);
+        switch (tc) {
         case TC_IOC:
             req.TimeCondition = THOST_FTDC_TC_IOC;
             break;
@@ -758,9 +764,14 @@ void CtpClient::InsertOrder(
             break;
         default:
             throw std::invalid_argument("time_condition");
+        }
+    } else {
+        req.TimeCondition = THOST_FTDC_TC_GFD;
     }
 
-    switch (volumeCondition) {
+    if (extraOptions.has_key("volume_condition")) {
+        VolumeCondition vc = extract<VolumeCondition>(extraOptions["volume_condition"]);
+        switch (vc) {
         case VC_AV:
             req.VolumeCondition = THOST_FTDC_VC_AV;
             break;
@@ -772,9 +783,14 @@ void CtpClient::InsertOrder(
             break;
         default:
             throw std::invalid_argument("volume_condition");
+        }
+    } else {
+        req.VolumeCondition = THOST_FTDC_VC_AV;
     }
 
-    switch (contingentCondition) {
+    if (extraOptions.has_key("contingent_condition")) {
+        ContingentCondition cc = extract<ContingentCondition>(extraOptions["contingent_condition"]);
+        switch (cc) {
         case CC_Immediately:
             req.ContingentCondition = THOST_FTDC_CC_Immediately;
             break;
@@ -825,16 +841,18 @@ void CtpClient::InsertOrder(
             break;
         default:
             throw std::invalid_argument("contingent_condition");
+        }
+    } else {
+        req.ContingentCondition = THOST_FTDC_CC_Immediately;
     }
 
-    req.MinVolume = minVolume;
-    req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
-    req.IsAutoSuspend = isAutoSuspend;
-    req.UserForceClose = userForceClose;
-    req.VolumeTotalOriginal = volume;
-    req.LimitPrice = limitPrice;
+    if (extraOptions.has_key("min_volume")) {
+        req.MinVolume = extract<int>(extraOptions["min_volume"]);
+    } else {
+        req.MinVolume = 1;
+    }
 
-    assert_request(_tdApi->ReqOrderInsert(&req, requestID));
+    assert_request(_tdApi->ReqOrderInsert(&req, requestId));
 }
 
 void CtpClient::OrderAction(

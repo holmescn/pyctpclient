@@ -6,7 +6,7 @@ class Client(CtpClient):
         print("idle")
 
     def on_tick(self, bar):
-        print(instrument_id, price, volume)
+        print(bar.instrument_id, bar.price, bar.volume)
 
     def on_1min(self, bar):
         print("1min", bar.instrument_id, bar.close, bar.volume, bar.turnover)
@@ -34,9 +34,6 @@ class Client(CtpClient):
 
     def on_err_order_insert(self, input_order, rsp_info):
         print("error insert order")
-
-    def on_rsp_order_action(self, input_order_action, rsp_info):
-        print("order action")
 
     def on_err_order_action(self, input_order_action, order_action, rsp_info):
         print("error order action")

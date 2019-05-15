@@ -991,13 +991,8 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
     .def("query_market_data", &CtpClient::QueryMarketData, (arg("instrument_id"), arg("request_id")=0))
     .def("insert_order", &CtpClient::InsertOrder,
-      (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"),
-       arg("volume"), arg("order_price_type")=OPT_LimitPrice,
-       arg("hedge_flag")=HF_Speculation, arg("time_condition")=TC_GFD,
-       arg("volume_condition")=VC_AV, arg("contingent_condition")=CC_Immediately,
-       arg("min_volume")=1, arg("stop_price")=0.0,
-       arg("is_auto_suspend")=false, arg("user_force_close")=false,
-       arg("request_id")=0))
+      (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"), arg("volume"),
+       arg("request_id")=0, arg("extra_options")=dict()))
     .def("order_action", &CtpClient::InsertOrder,
       (arg("order"), arg("action_flag"), arg("limit_price")=0.0,
        arg("volume_change")=0, arg("request_id")=0))

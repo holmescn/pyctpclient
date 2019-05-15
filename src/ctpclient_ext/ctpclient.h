@@ -307,16 +307,8 @@ public:
                      OffsetFlag offsetFlag,
                      TThostFtdcPriceType limitPrice,
                      TThostFtdcVolumeType volume,
-                     OrderPriceType orderPriceType,
-                     HedgeFlag hedgeFlag,
-                     TimeCondition timeCondition,
-                     VolumeCondition volumeCondition,
-                     ContingentCondition contingentCondition,
-                     TThostFtdcVolumeType minVolume,
-                     TThostFtdcPriceType stopPrice,
-                     bool isAutoSuspend,
-                     bool userForceClose,
-                     int requestID
+                     int requestId,
+                     boost::python::dict extraOptions
                     );
     void OrderAction(boost::shared_ptr<CThostFtdcOrderField> pOrder,
                      OrderActionFlag actionFlag,

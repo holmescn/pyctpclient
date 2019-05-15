@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.2.4a0
+
+1. Use `dict` for extra options in `insert_order`
+
 ## 0.2.3a1
 
 1. Use `moodycamel::ConcurrentQueue` instead of `std::queue`.

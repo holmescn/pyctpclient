@@ -630,6 +630,7 @@ void CtpClient::InsertOrder(
     req.ContingentCondition = THOST_FTDC_CC_Immediately;
     req.MinVolume = 1;
     req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
+    req.RequestID = requestId;
 
     switch(direction) {
         case D_Buy:

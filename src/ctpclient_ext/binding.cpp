@@ -13,92 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <boost/python.hpp>
-#include <boost/smart_ptr.hpp>
+#include <functional>
+#include <pybind11/pybind11.h>
 #include "ctpclient.h"
 #include "mdspi.h"
 
-using namespace boost::python;
-
-#pragma region Exception translators
-
-static void trans_exception(int rc, std::string request)
-{
-  auto msg = "[%d] %s" % boost::python::make_tuple(rc, request);
-  std::string msg_s = extract<std::string>(msg);
-    PyErr_SetString(PyExc_Exception, msg_s.c_str());
-}
-
-void RequestNetworkException_translator(RequestNetworkException const& e)
-{
-  trans_exception(-1, e.request);
-}
-
-void FullRequestQueueException_translator(FullRequestQueueException const& e)
-{
-  trans_exception(-2, e.request);
-}
-
-void RequestTooFrequentlyException_translator(RequestTooFrequentlyException const& e)
-{
-  trans_exception(-3, e.request);
-}
-
-void UnknownRequestException_translator(UnknownRequestException const& e)
-{
-  trans_exception(e.rc, e.request);
-}
-
-void invalid_argument_translator(std::invalid_argument const& e)
-{
-  auto msg = "InvalidArgument %s." % boost::python::make_tuple(e.what());
-  std::string msg_s = extract<std::string>(msg);
-  PyErr_SetString(PyExc_Exception, msg_s.c_str());
-}
-
-#pragma endregion // Exception translators
+namespace py = pybind11;
 
 #pragma region Getters
 
 template<class T1, class T2>
-inline boost::python::object tostr(T2 T1::*member_var)
+auto tostr(T2 T1::*member_var)
 {
-  return make_function(
-        [member_var](T1 const* this_) { return str(this_->*member_var); },
-        default_call_policies(),
-        boost::mpl::vector<str, T1 const*>());
+  return [member_var](T1 const *this_) {
+    return py::str(this_->*member_var);
+  };
 }
 
 template<class T1, class T2>
-inline boost::python::object tobytes(T2 T1::*member_var)
+auto tobytes(T2 T1::*member_var)
 {
-  return make_function(
-        [member_var](T1 const* this_) {
-          char *s = const_cast<char*>(this_->*member_var);
-          auto pyobj = PyBytes_FromString(s);
-          return boost::python::object(handle<>(pyobj));
-        },
-        default_call_policies(),
-        boost::mpl::vector<boost::python::object, T1 const*>());
+  return [member_var](T1 const *this_) {
+    return py::bytes(this_->*member_var);
+  };
 }
 
-str InvestorPosition_PositionDate(CThostFtdcInvestorPositionField const *this_)
+const char* InvestorPosition_PositionDate(CThostFtdcInvestorPositionField const *this_)
 {
   switch(this_->PositionDate) {
-    case THOST_FTDC_PSD_Today: return str("today");
-    case THOST_FTDC_PSD_History: return str("history");
-    default: return str("unknown");
+    case THOST_FTDC_PSD_Today: return "today";
+    case THOST_FTDC_PSD_History: return "history";
+    default: return "unknown";
   }
 }
 
 template<class T>
-str tostr_PositionDirection(T const *this_)
+const char* tostr_PositionDirection(T const *this_)
 {
   switch(this_->PosiDirection) {
-    case THOST_FTDC_PD_Net:   return str("net");
-    case THOST_FTDC_PD_Long:  return str("long");
-    case THOST_FTDC_PD_Short: return str("short");
-    default: return str("unknown");
+    case THOST_FTDC_PD_Net:   return "net";
+    case THOST_FTDC_PD_Long:  return "long";
+    case THOST_FTDC_PD_Short: return "short";
+    default: return "unknown";
   }
 }
 
@@ -113,19 +69,20 @@ Direction toenum_Direction(T const *this_)
 }
 
 template<class T>
-str tostr_TradeType(T const *this_)
+const char* tostr_TradeType(T const *this_)
 {
   switch(this_->TradeType) {
-    case THOST_FTDC_TRDT_SplitCombination: return str("split_combination");
-    case THOST_FTDC_TRDT_Common: return str("common");
-    case THOST_FTDC_TRDT_OptionsExecution: return str("options_execution");
-    case THOST_FTDC_TRDT_OTC: return str("OTC");
-    case THOST_FTDC_TRDT_EFPDerived: return str("EFP_derived");
-    case THOST_FTDC_TRDT_CombinationDerived: return str("combination_derived");
-    default: return str("unknown");
+    case THOST_FTDC_TRDT_SplitCombination: return "split_combination";
+    case THOST_FTDC_TRDT_Common: return "common";
+    case THOST_FTDC_TRDT_OptionsExecution: return "options_execution";
+    case THOST_FTDC_TRDT_OTC: return "OTC";
+    case THOST_FTDC_TRDT_EFPDerived: return "EFP_derived";
+    case THOST_FTDC_TRDT_CombinationDerived: return "combination_derived";
+    default: return "unknown";
   }
 }
 
+/*
 template<class T>
 str tostr_OrderPriceType(T const *this_)
 {
@@ -412,25 +369,20 @@ OrderActionStatus tostr_OrderActionStatus(T const* this_)
     default: throw std::invalid_argument("unknown order action status");
   }
 }
-
+*/
 #pragma endregion // Getters
 
-BOOST_PYTHON_MODULE(_ctpclient)
-{
-  PyEval_InitThreads();
+PYBIND11_MODULE(_ctpclient, m) {
+  py::register_exception<RequestNetworkException>(m, "RequestNetworkException");
+  py::register_exception<FullRequestQueueException>(m, "FullRequestQueueException");
+  py::register_exception<RequestTooFrequentlyException>(m, "RequestTooFrequentlyException");
+  py::register_exception<UnknownRequestException>(m, "UnknownRequestException");
 
-  register_exception_translator<RequestNetworkException>(RequestNetworkException_translator);
-  register_exception_translator<FullRequestQueueException>(FullRequestQueueException_translator);
-  register_exception_translator<RequestTooFrequentlyException>(RequestTooFrequentlyException_translator);
-  register_exception_translator<UnknownRequestException>(UnknownRequestException_translator);
-  register_exception_translator<std::invalid_argument>(invalid_argument_translator);
-
-  enum_<Direction>("Direction")
-    .value("UNKNOWN", D_Unknown)
+  py::enum_<Direction>(m, "Direction")
     .value("BUY", D_Buy)
     .value("SELL", D_Sell);
 
-  enum_<OffsetFlag>("OffsetFlag")
+  py::enum_<OffsetFlag>(m, "OffsetFlag")
     .value("OPEN", OF_Open)
     .value("CLOSE", OF_Close)
     .value("FORCE_CLOSE", OF_ForceClose)
@@ -439,7 +391,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("FORCE_OFF", OF_ForceOff)
     .value("LOCAL_FORCE_CLOSE", OF_LocalForceClose);
 
-  enum_<OrderPriceType>("OrderPriceType")
+  py::enum_<OrderPriceType>(m, "OrderPriceType")
     .value("ANY_PRICE", OPT_AnyPrice)
     .value("LIMIT_PRICE", OPT_LimitPrice)
     .value("BEST_PRICE", OPT_BestPrice)
@@ -457,13 +409,13 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("BID_PRICE1_PLUS_THREE_TICKS", OPT_BidPrice1PlusThreeTicks)
     .value("FIVE_LEVEL_PRICE", OPT_FiveLevelPrice);
 
-  enum_<HedgeFlag>("HedgeFlag")
+  py::enum_<HedgeFlag>(m, "HedgeFlag")
     .value("SPECULATION", HF_Speculation)
     .value("ARBITRAGE", HF_Arbitrage)
     .value("HEDGE", HF_Hedge)
     .value("MARKET_MAKER", HF_MarketMaker);
 
-  enum_<TimeCondition>("TimeCondition")
+  py::enum_<TimeCondition>(m, "TimeCondition")
     .value("IOC", TC_IOC)
     .value("GFS", TC_GFS)
     .value("GFD", TC_GFD)
@@ -471,12 +423,12 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("GTC", TC_GTC)
     .value("GFA", TC_GFA);
   
-  enum_<VolumeCondition>("VolumeCondition")
+  py::enum_<VolumeCondition>(m, "VolumeCondition")
     .value("ANY_VOLUME", VC_AV)
     .value("MIN_VOLUME", VC_MV)
     .value("ALL", VC_CV);
 
-  enum_<ContingentCondition>("ContingentCondition")
+  py::enum_<ContingentCondition>(m, "ContingentCondition")
     .value("IMMEDIATELY", CC_Immediately)
     .value("TOUCH", CC_Touch)
     .value("TOUCH_PROFIT", CC_TouchProfit)
@@ -493,11 +445,12 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("BID_PRICE_GREATER_EQUAL_STOP_PRICE", CC_BidPriceGreaterEqualStopPrice)
     .value("BID_PRICE_LESSER_THAN_STOP_PRICE", CC_BidPriceLesserThanStopPrice)
     .value("BID_PRICE_LESSER_EQUAL_STOP_PRICE", CC_BidPriceLesserEqualStopPrice);
-  enum_<OrderActionFlag>("OrderActionFlag")
+
+  py::enum_<OrderActionFlag>(m, "OrderActionFlag")
     .value("DELETE", AF_Delete)
     .value("MODIFY", AF_Modify);
 
-  enum_<OrderStatus>("OrderStatus")
+  py::enum_<OrderStatus>(m, "OrderStatus")
     .value("ALL_TRADED", OST_AllTraded)
     .value("PART_TRADED_QUEUEING", OST_PartTradedQueueing)
     .value("PART_TRADED_NOT_QUEUEING", OST_PartTradedNotQueueing)
@@ -508,7 +461,7 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("NOT_TOUCHED", OST_NotTouched)
     .value("TOUCHED", OST_Touched);
 
-  enum_<OrderSubmitStatus>("OrderSubmitStatus")
+  py::enum_<OrderSubmitStatus>(m, "OrderSubmitStatus")
     .value("INSERT_SUBMITTED", OSS_InsertSubmitted)
     .value("CANCEL_SUBMITTED", OSS_CancelSubmitted)
     .value("MODIFY_SUBMITTED", OSS_ModifySubmitted)
@@ -517,16 +470,17 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .value("CANCEL_REJECTED", OSS_CancelRejected)
     .value("MODIFY_REJECTED", OSS_ModifyRejected);
 
-  enum_<OrderActionStatus>("OrderActionStatus")
+  py::enum_<OrderActionStatus>(m, "OrderActionStatus")
     .value("SUBMITTED", OAS_Submitted)
     .value("ACCEPTED", OAS_Accepted)
     .value("REJECTED", OAS_Rejected);
 
-  class_<M1Bar>("M1Bar")
-    .add_property("instrument_id", tostr(&M1Bar::InstrumentID))
-    .add_property("trading_day", tostr(&M1Bar::TradingDay))
-    .add_property("action_day", tostr(&M1Bar::ActionDay))
-    .add_property("update_time", tostr(&M1Bar::UpdateTime))
+/*
+  py::class_<M1Bar>("M1Bar")
+    .def_property("instrument_id", tostr(&M1Bar::InstrumentID))
+    .def_property("trading_day", tostr(&M1Bar::TradingDay))
+    .def_property("action_day", tostr(&M1Bar::ActionDay))
+    .def_property("update_time", tostr(&M1Bar::UpdateTime))
     .def_readonly("open", &M1Bar::OpenPrice)
     .def_readonly("high", &M1Bar::HighestPrice)
     .def_readonly("low", &M1Bar::LowestPrice)
@@ -1016,5 +970,5 @@ BOOST_PYTHON_MODULE(_ctpclient)
     .def("on_rsp_market_data", pure_virtual(&CtpClient::OnRspQryDepthMarketData))
     .def("on_idle", pure_virtual(&CtpClient::OnIdle))
     ;
-
+*/
 };

@@ -29,15 +29,19 @@ TraderSpi::~TraderSpi()
 
 void TraderSpi::OnFrontConnected()
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdFrontConnected);
-    _client->Push(r);
+    CtpClient::Response r;
+    memset(&r, 0, sizeof r);
+    r.type = CtpClient::ResponseType::OnTdFrontDisconnected;
+    _client->Enqueue(r);
 }
 
 void TraderSpi::OnFrontDisconnected(int nReason)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdFrontDisconnected);
-    r->nReason = nReason;
-    _client->Push(r);
+    CtpClient::Response r;
+    memset(&r, 0, sizeof r);
+    r.type = CtpClient::ResponseType::OnTdFrontDisconnected;
+    r.nReason = nReason;
+    _client->Enqueue(r);
 }
 
 void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField * /* pRspAuthenticateField */, CThostFtdcRspInfoField * /* pRspInfo */, int /* nRequestID */, bool /* bIsLast */)
@@ -47,114 +51,88 @@ void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField * /* pRspAuthen
 
 void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdUserLogin, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pRspUserLogin);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnTdUserLogin, pRspUserLogin, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdUserLogout, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pUserLogout);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnTdUserLogout, pUserLogout, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnSettlementInfoConfirm, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pSettlementInfoConfirm);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnSettlementInfoConfirm, pSettlementInfoConfirm, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspOrderInsert, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pInputOrder);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspOrderInsert, pInputOrder, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspOrderAction, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pInputOrderAction);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspOrderAction, pInputOrderAction, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnErrRtnOrderInsert, pRspInfo);
-    r->SetRsp(pInputOrder);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnErrRtnOrderInsert, pInputOrder, pRspInfo);
 }
 
 void TraderSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnErrRtnOrderAction, pRspInfo);
-    r->SetRsp(pOrderAction);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnErrRtnOrderAction, pOrderAction, pRspInfo);
 }
 
 void TraderSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRtnOrder);
-    r->SetRsp(pOrder);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRtnOrder, pOrder);
 }
 
 void TraderSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRtnTrade);
-    r->SetRsp(pTrade);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRtnTrade, pTrade);
 }
 
 void TraderSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnTdError, pRspInfo, nRequestID, bIsLast);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnTdError, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryOrder, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pOrder);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspQryOrder, pOrder, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryTrade, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pTrade);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspQryTrade, pTrade, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryTradingAccount, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pTradingAccount);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspQryTradingAccount, pTradingAccount, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryInvestorPosition, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pInvestorPosition);
-    _client->Push(r);
+    
+    _client->Enqueue(CtpClient::ResponseType::OnRspQryInvestorPosition, pInvestorPosition, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryDepthMarketData, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pDepthMarketData);
-    if (pDepthMarketData == nullptr && r->RspInfo.ErrorID == 0) {
-        r->RspInfo.ErrorID = 16;
+    CtpClient::Response r;
+    r.Init(CtpClient::ResponseType::OnRspQryDepthMarketData, pRspInfo, nRequestID, bIsLast);
+    if (pDepthMarketData) {
+        memcpy(&r.base, pDepthMarketData, sizeof r.DepthMarketData);
+    } else if (pRspInfo->ErrorID == 0) {
+        r.RspInfo.ErrorID = 16;
     }
-    _client->Push(r);
+    _client->Enqueue(r);
 }
 
 void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    auto r = new CtpClient::Response(CtpClient::ResponseType::OnRspQryInvestorPositionDetail, pRspInfo, nRequestID, bIsLast);
-    r->SetRsp(pInvestorPositionDetail);
-    _client->Push(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspQryInvestorPositionDetail, pInvestorPositionDetail, pRspInfo, nRequestID, bIsLast);
 }

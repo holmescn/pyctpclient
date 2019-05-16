@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <map>
 #include <string>
 #include "ThostFtdcMdApi.h"
 #include "ThostFtdcUserApiStruct.h"
@@ -24,6 +25,7 @@ class CtpClient;
 class MdSpi : public CThostFtdcMdSpi
 {
     CtpClient *_client;
+	std::map<std::string, M1Bar> _m1Bars;
 public:
     MdSpi(CtpClient *client);
     MdSpi(const MdSpi&) = delete;

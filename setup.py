@@ -17,12 +17,13 @@ if sys.platform == 'win32':
     ]
     extra_compile_args = []
 elif sys.platform == "linux":
-    include_dirs = []
+    include_dirs = [
+        os.path.abspath("./pybind11/include")
+    ]
     library_dirs = [
         os.path.abspath("./lib")
     ]
     libraries = [
-        'boost_python-py35',
     ]
     extra_compile_args = ['-std=c++14', '-Wall', '-Wextra', '-Wno-unknown-pragmas', '-Wno-unused-parameter']
 else:

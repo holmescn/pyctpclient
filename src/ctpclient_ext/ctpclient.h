@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 #pragma once
-#include <map>
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include <boost/python.hpp>
-#include <boost/shared_ptr.hpp>
+#include <pybind11/pybind11.h>
 #include "ThostFtdcUserApiStruct.h"
 #include "bar.h"
 #include "concurrentqueue.h"
+
+namespace py = pybind11;
 
 class MdSpi;
 class TraderSpi;
@@ -56,7 +56,7 @@ struct UnknownRequestException
 
 #pragma region Enums
 
-enum Direction { D_Unknown, D_Buy, D_Sell };
+enum Direction { D_Buy, D_Sell };
 enum OffsetFlag {
         OF_Open, OF_Close, OF_ForceClose, OF_CloseToday, OF_CloseYesterday,
         OF_ForceOff, OF_LocalForceClose };
@@ -139,6 +139,9 @@ class CtpClient
         OnSubMarketData,
         OnUnSubMarketData,
         OnRtnMarketData,
+        OnTick,
+        On1Min,
+        On1MinTick,
         OnMdError,
 
         OnTdFrontConnected,
@@ -200,42 +203,40 @@ class CtpClient
         int nReason;
         bool bIsLast;
 
-        Response(ResponseType type_, CThostFtdcRspInfoField *pRspInfo=nullptr, int nRequestID_=0, bool bIsLast_=true)
-        : type(type_), nRequestID(nRequestID_), nReason(0), bIsLast(bIsLast_) {
+        inline void Init(ResponseType type, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
+            memset(this, 0, sizeof *this);
+            this->type = type;
+            this->nRequestID = nRequestID;
+            this->bIsLast = bIsLast;    
             if (pRspInfo) {
-                memcpy(&RspInfo, pRspInfo, sizeof RspInfo);
-            } else {
-                memset(&RspInfo, 0, sizeof RspInfo);
-            }
-        }
-        Response(const Response &other) = default;
-        Response(Response &&other) = default;
-        Response& operator=(const Response &rhs) = default;
-        Response& operator=(Response &&rhs) = default;
-        ~Response() = default;
-
-        template<class T>
-        inline void SetRsp(T *pRsp) {
-            if (pRsp) {
-                memcpy(&base, pRsp, sizeof *pRsp);
-            } else {
-                memset(&base, 0, sizeof *pRsp);
+                memcpy(&this->RspInfo, pRspInfo, sizeof this->RspInfo);
             }
         }
     };
 
     std::atomic_bool _requestResponsed;
-    moodycamel::ConcurrentQueue<CtpClient::Request*>  _requestQueue;
-    moodycamel::ConcurrentQueue<CtpClient::Response*> _responseQueue;
+    moodycamel::ConcurrentQueue<CtpClient::Request>  _requestQueue;
+    moodycamel::ConcurrentQueue<CtpClient::Response> _responseQueue;
     void ProcessRequest(CtpClient::Request *r);
     void ProcessResponse(CtpClient::Response *r);
-    void Push(CtpClient::Response *r);
+
+    template<class T>
+    void Enqueue(ResponseType type, T *pRsp, CThostFtdcRspInfoField *pRspInfo=nullptr, int nRequestID=0, bool bIsLast=true) {
+        Response r;
+        r.Init(type, pRspInfo, nRequestID, bIsLast);
+        if (pRsp) {
+            memcpy(&r.base, pRsp, sizeof(T));
+        }
+
+        Enqueue(r);
+    }
+    void Enqueue(ResponseType type, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
+    void Enqueue(const CtpClient::Response &r);
 
     friend class MdSpi;
     friend class TraderSpi;
 protected:
-    boost::python::list _instrumentIds;
-	std::map<std::string, M1Bar> _m1Bars;
+    py::list _instrumentIds;
 
 public:
     CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
@@ -360,7 +361,7 @@ public:
     void On1Min(M1Bar *bar) override;
     void On1MinTick(M1Bar *bar) override;
 	void OnMdError(CThostFtdcRspInfoField *pRspInfo) override;
-    
+
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
 	void OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) override;

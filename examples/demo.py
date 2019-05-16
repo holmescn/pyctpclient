@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 from pyctpclient import CtpClient, Direction, OffsetFlag
 
+BUY = Direction.BUY
+SELL = Direction.SELL
+OPEN = OffsetFlag.OPEN
+CLOSE = OffsetFlag.CLOSE
+
+
 class Client(CtpClient):
     def on_idle(self):
         print("idle")

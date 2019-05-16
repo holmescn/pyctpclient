@@ -623,6 +623,13 @@ void CtpClient::InsertOrder(
     strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
     req.VolumeTotalOriginal = volume;
     req.LimitPrice = limitPrice;
+    req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
+    req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
+    req.TimeCondition = THOST_FTDC_TC_GFD;
+    req.VolumeCondition = THOST_FTDC_VC_AV;
+    req.ContingentCondition = THOST_FTDC_CC_Immediately;
+    req.MinVolume = 1;
+    req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
 
     switch(direction) {
         case D_Buy:
@@ -715,8 +722,6 @@ void CtpClient::InsertOrder(
         default:
             throw std::invalid_argument("order_price_type");
         }
-    } else {
-        req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
     }
 
     if (extraOptions.has_key("hedge_flag")) {
@@ -737,8 +742,6 @@ void CtpClient::InsertOrder(
         default:
             throw std::invalid_argument("hedge_flag");
         }
-    } else {
-        req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
     }
 
     if (extraOptions.has_key("time_condition")) {
@@ -765,8 +768,6 @@ void CtpClient::InsertOrder(
         default:
             throw std::invalid_argument("time_condition");
         }
-    } else {
-        req.TimeCondition = THOST_FTDC_TC_GFD;
     }
 
     if (extraOptions.has_key("volume_condition")) {
@@ -784,8 +785,6 @@ void CtpClient::InsertOrder(
         default:
             throw std::invalid_argument("volume_condition");
         }
-    } else {
-        req.VolumeCondition = THOST_FTDC_VC_AV;
     }
 
     if (extraOptions.has_key("contingent_condition")) {
@@ -842,14 +841,10 @@ void CtpClient::InsertOrder(
         default:
             throw std::invalid_argument("contingent_condition");
         }
-    } else {
-        req.ContingentCondition = THOST_FTDC_CC_Immediately;
     }
 
     if (extraOptions.has_key("min_volume")) {
         req.MinVolume = extract<int>(extraOptions["min_volume"]);
-    } else {
-        req.MinVolume = 1;
     }
 
     assert_request(_tdApi->ReqOrderInsert(&req, requestId));

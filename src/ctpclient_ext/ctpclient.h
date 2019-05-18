@@ -17,7 +17,10 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <string>
+#include <vector>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include "ThostFtdcUserApiStruct.h"
 #include "bar.h"
 #include "concurrentqueue.h"
@@ -236,10 +239,10 @@ class CtpClient
     friend class MdSpi;
     friend class TraderSpi;
 protected:
-    py::list _instrumentIds;
+    std::vector<std::string> _instrumentIds;
 
 public:
-    CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
+    CtpClient(const std::string &mdAddr, const std::string &tdAddr, const std::string &brokerId, const std::string &userId, const std::string &password);
     CtpClient(const CtpClient&) = delete;
     CtpClient(CtpClient&&) = delete;
     CtpClient& operator=(const CtpClient&) = delete;
@@ -264,17 +267,20 @@ public:
     inline void SetUserId(std::string userId) { _userId = userId; }
     inline std::string GetPassword() const { return _password; }
     inline void SetPassword(std::string password) { _password = password; }
-    inline boost::python::list GetInstrumentIds() const { return _instrumentIds; }
-    inline void SetInstrumentIds(boost::python::list instrumentIds) { _instrumentIds = instrumentIds; }
-
-public:
-    static boost::python::tuple GetApiVersion();
+    inline const std::vector<std::string>& GetInstrumentIds() const { return _instrumentIds; }
+    inline void SetInstrumentIds(const std::vector<std::string> &instrumentIds) {
+        _instrumentIds.clear();
+        for (auto &id : instrumentIds) {
+            _instrumentIds.push_back(id);
+        }
+    }
+    py::tuple GetApiVersion();
 
 public:
     // MdApi
     void MdLogin();
-    void SubscribeMarketData(boost::python::list instrumentIds);
-    void UnsubscribeMarketData(boost::python::list instrumentIds);
+    void SubscribeMarketData(const std::vector<std::string> &instrumentIds);
+    void UnsubscribeMarketData(const std::vector<std::string> &instrumentIds);
 
 public:
     // MdSpi
@@ -303,24 +309,24 @@ public:
 
     void TdLogin();
     void ConfirmSettlementInfo();
-    void InsertOrder(std::string instrumentId,
-                     Direction direction,
-                     OffsetFlag offsetFlag,
-                     TThostFtdcPriceType limitPrice,
-                     TThostFtdcVolumeType volume,
-                     int requestId,
-                     boost::python::dict extraOptions
-                    );
-    void OrderAction(boost::shared_ptr<CThostFtdcOrderField> pOrder,
-                     OrderActionFlag actionFlag,
-                     TThostFtdcPriceType limitPrice,
-                     TThostFtdcVolumeType volumeChange,
-                     int requestId);
-    void DeleteOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder, int requestId);
-    void ModifyOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder,
-                     TThostFtdcPriceType limitPrice,
-                     TThostFtdcVolumeType volumeChange,
-                     int requestId);
+    // void InsertOrder(std::string instrumentId,
+    //                  Direction direction,
+    //                  OffsetFlag offsetFlag,
+    //                  TThostFtdcPriceType limitPrice,
+    //                  TThostFtdcVolumeType volume,
+    //                  int requestId,
+    //                  boost::python::dict extraOptions
+    //                 );
+    // void OrderAction(boost::shared_ptr<CThostFtdcOrderField> pOrder,
+    //                  OrderActionFlag actionFlag,
+    //                  TThostFtdcPriceType limitPrice,
+    //                  TThostFtdcVolumeType volumeChange,
+    //                  int requestId);
+    // void DeleteOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder, int requestId);
+    // void ModifyOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder,
+    //                  TThostFtdcPriceType limitPrice,
+    //                  TThostFtdcVolumeType volumeChange,
+    //                  int requestId);
 
 public:
     // TraderSpi
@@ -331,7 +337,7 @@ public:
 	virtual void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) = 0;
-	virtual void OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder) = 0;
+	virtual void OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder) = 0;
 	virtual void OnRtnTrade(CThostFtdcTradeField *pTrade) = 0;
 	virtual void OnTdError(CThostFtdcRspInfoField *pRspInfo) = 0;
 
@@ -344,11 +350,11 @@ public:
 };
 
 
-class CtpClientWrap : public CtpClient, public boost::python::wrapper<CtpClient>
+class CtpClientWrap : public CtpClient
 {
 public:
-	CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password);
-	~CtpClientWrap();
+    /* Inherit the constructors */
+    using CtpClient::CtpClient;
 
 	void OnMdFrontConnected() override;
 	void OnMdFrontDisconnected(int nReason) override;
@@ -369,7 +375,7 @@ public:
 	void OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo) override;
     void OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo) override;
     void OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo) override;
-	void OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder) override;
+	void OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder) override;
 	void OnRtnTrade(CThostFtdcTradeField *pTrade) override;
 	void OnTdError(CThostFtdcRspInfoField *pRspInfo) override;
 

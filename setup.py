@@ -30,8 +30,6 @@ else:
     raise ValueError('Platform %s is not supportted.' % sys.platform)
 
 libraries.extend([
-    'boost_system',
-    'boost_filesystem',
     'thostmduserapi',
     'thosttraderapi'
 ])

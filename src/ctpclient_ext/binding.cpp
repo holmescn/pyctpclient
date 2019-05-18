@@ -18,10 +18,12 @@
 #include "ctpclient.h"
 #include "mdspi.h"
 
+using namespace pybind11::literals;
 namespace py = pybind11;
 
 #pragma region Getters
 
+/*
 template<class T1, class T2>
 auto tostr(T2 T1::*member_var)
 {
@@ -82,7 +84,6 @@ const char* tostr_TradeType(T const *this_)
   }
 }
 
-/*
 template<class T>
 str tostr_OrderPriceType(T const *this_)
 {
@@ -374,9 +375,11 @@ OrderActionStatus tostr_OrderActionStatus(T const* this_)
 
 PYBIND11_MODULE(_ctpclient, m) {
   py::register_exception<RequestNetworkException>(m, "RequestNetworkException");
-  py::register_exception<FullRequestQueueException>(m, "FullRequestQueueException");
-  py::register_exception<RequestTooFrequentlyException>(m, "RequestTooFrequentlyException");
-  py::register_exception<UnknownRequestException>(m, "UnknownRequestException");
+  // py::register_exception<FullRequestQueueException>(m, "FullRequestQueueException");
+  // py::register_exception<RequestTooFrequentlyException>(m, "RequestTooFrequentlyException");
+  // py::register_exception<UnknownRequestException>(m, "UnknownRequestException");
+
+#pragma region Enums
 
   py::enum_<Direction>(m, "Direction")
     .value("BUY", D_Buy)
@@ -475,6 +478,34 @@ PYBIND11_MODULE(_ctpclient, m) {
     .value("ACCEPTED", OAS_Accepted)
     .value("REJECTED", OAS_Rejected);
 
+#pragma endregion
+
+  py::class_<CThostFtdcRspInfoField>(m, "ResponseInfo")
+    .def_readonly("error_id", &CThostFtdcRspInfoField::ErrorID)
+    .def_property_readonly("error_msg", [](CThostFtdcRspInfoField const *this_) { return py::bytes(this_->ErrorMsg); })
+    ;
+
+  py::class_<CThostFtdcRspUserLoginField>(m, "UserLoginInfo")
+    .def_readonly("trading_day", &CThostFtdcRspUserLoginField::TradingDay)
+    .def_readonly("login_time", &CThostFtdcRspUserLoginField::LoginTime)
+    .def_readonly("broker_id", &CThostFtdcRspUserLoginField::BrokerID)
+    .def_readonly("user_id", &CThostFtdcRspUserLoginField::UserID)
+    .def_readonly("system_name", &CThostFtdcRspUserLoginField::SystemName)
+    .def_readonly("front_id", &CThostFtdcRspUserLoginField::FrontID)
+    .def_readonly("session_id", &CThostFtdcRspUserLoginField::SessionID)
+    .def_readonly("max_order_ref", &CThostFtdcRspUserLoginField::MaxOrderRef)
+    .def_readonly("SHFE_time", &CThostFtdcRspUserLoginField::SHFETime)
+    .def_readonly("DCE_time", &CThostFtdcRspUserLoginField::DCETime)
+    .def_readonly("CZCE_time", &CThostFtdcRspUserLoginField::CZCETime)
+    .def_readonly("FFEX_time", &CThostFtdcRspUserLoginField::FFEXTime)
+    .def_readonly("INE_time", &CThostFtdcRspUserLoginField::INETime)
+    ;
+
+  py::class_<CThostFtdcUserLogoutField>(m, "UserLogoutInfo")
+    .def_readonly("broker_id", &CThostFtdcUserLogoutField::BrokerID)
+    .def_readonly("user_id", &CThostFtdcUserLogoutField::UserID)
+    ;
+
 /*
   py::class_<M1Bar>("M1Bar")
     .def_property("instrument_id", tostr(&M1Bar::InstrumentID))
@@ -499,32 +530,6 @@ PYBIND11_MODULE(_ctpclient, m) {
     .def_readonly("volume", &TickBar::Volume)
     .def_readonly("turnover", &TickBar::Turnover)
     .def_readonly("position", &TickBar::Position)
-    ;
-
-  class_<CThostFtdcRspUserLoginField>("UserLoginInfo")
-    .add_property("trading_day", tostr(&CThostFtdcRspUserLoginField::TradingDay))
-    .add_property("login_time", tostr(&CThostFtdcRspUserLoginField::LoginTime))
-    .add_property("broker_id", tostr(&CThostFtdcRspUserLoginField::BrokerID))
-    .add_property("user_id", tostr(&CThostFtdcRspUserLoginField::UserID))
-    .add_property("system_name", tostr(&CThostFtdcRspUserLoginField::SystemName))
-    .def_readonly("front_id", &CThostFtdcRspUserLoginField::FrontID)
-    .def_readonly("session_id", &CThostFtdcRspUserLoginField::SessionID)
-    .add_property("max_order_ref", tostr(&CThostFtdcRspUserLoginField::MaxOrderRef))
-    .add_property("SHFE_time", tostr(&CThostFtdcRspUserLoginField::SHFETime))
-    .add_property("DCE_time", tostr(&CThostFtdcRspUserLoginField::DCETime))
-    .add_property("CZCE_time", tostr(&CThostFtdcRspUserLoginField::CZCETime))
-    .add_property("FFEX_time", tostr(&CThostFtdcRspUserLoginField::FFEXTime))
-    .add_property("INE_time", tostr(&CThostFtdcRspUserLoginField::INETime))
-    ;
-
-  class_<CThostFtdcUserLogoutField>("UserLogoutInfo")
-    .add_property("broker_id", tostr(&CThostFtdcUserLogoutField::BrokerID))
-    .add_property("user_id", tostr(&CThostFtdcUserLogoutField::UserID))
-    ;
-
-  class_<CThostFtdcRspInfoField>("ResponseInfo")
-    .def_readonly("error_id", &CThostFtdcRspInfoField::ErrorID)
-    .add_property("error_msg", tobytes(&CThostFtdcRspInfoField::ErrorMsg))
     ;
 
   class_<CThostFtdcSpecificInstrumentField>("SpecificInstrument")
@@ -907,17 +912,19 @@ PYBIND11_MODULE(_ctpclient, m) {
     // .add_property("ip_address", &CThostFtdcOrderActionField::IPAddress)
     // .add_property("mac_address", &CThostFtdcOrderActionField::MacAddress)
     ;
+*/
 
-  class_<CtpClientWrap, boost::noncopyable>("CtpClient", init<std::string, std::string, std::string, std::string, std::string>())
-     .add_property("flow_path", &CtpClient::GetFlowPath, &CtpClient::SetFlowPath)
-     .add_property("md_address", &CtpClient::GetMdAddr, &CtpClient::SetMdAddr)
-     .add_property("td_address", &CtpClient::GetTdAddr, &CtpClient::SetTdAddr)
-     .add_property("broker_id", &CtpClient::GetBrokerId, &CtpClient::SetBrokerId)
-     .add_property("user_id", &CtpClient::GetUserId, &CtpClient::SetUserId)
-     .add_property("password", &CtpClient::GetPassword, &CtpClient::SetPassword)
-     .add_property("instrument_ids", &CtpClient::GetInstrumentIds, &CtpClient::SetInstrumentIds)
-    .def("get_api_version", &CtpClient::GetApiVersion)
-        .staticmethod("get_api_version")
+  py::class_<CtpClient, CtpClientWrap>(m, "CtpClient")
+    .def(py::init<const std::string&, const std::string&, const std::string&, const std::string&, const std::string&>(),
+         "md_address"_a, "td_address"_a, "broker_id"_a, "user_id"_a, "password"_a)
+    .def_property_readonly("__version__", &CtpClient::GetApiVersion)
+    .def_property("flow_path", &CtpClient::GetFlowPath, &CtpClient::SetFlowPath)
+    .def_property("md_address", &CtpClient::GetMdAddr, &CtpClient::SetMdAddr)
+    .def_property("td_address", &CtpClient::GetTdAddr, &CtpClient::SetTdAddr)
+    .def_property("broker_id", &CtpClient::GetBrokerId, &CtpClient::SetBrokerId)
+    .def_property("user_id", &CtpClient::GetUserId, &CtpClient::SetUserId)
+    .def_property("password", &CtpClient::GetPassword, &CtpClient::SetPassword)
+    .def_property("instrument_ids", &CtpClient::GetInstrumentIds, &CtpClient::SetInstrumentIds)
     .def("init", &CtpClient::Init)
     .def("join", &CtpClient::Join)
     .def("exit", &CtpClient::Exit)
@@ -925,50 +932,49 @@ PYBIND11_MODULE(_ctpclient, m) {
     .def("md_login", &CtpClient::MdLogin)
     .def("subscribe_market_data", &CtpClient::SubscribeMarketData)
     .def("unsubscribe_market_data", &CtpClient::UnsubscribeMarketData)
-    .def("on_md_front_connected", pure_virtual(&CtpClient::OnMdFrontConnected))
-    .def("on_md_front_disconnected", pure_virtual(&CtpClient::OnMdFrontDisconnected))
-    .def("on_md_user_login", pure_virtual(&CtpClient::OnMdUserLogin))
-    .def("on_md_user_logout", pure_virtual(&CtpClient::OnMdUserLogout))
-    .def("on_subscribe_market_data", pure_virtual(&CtpClient::OnSubscribeMarketData))
-    .def("on_unsubscribe_market_data", pure_virtual(&CtpClient::OnUnsubscribeMarketData))
-    .def("on_rtn_market_data", pure_virtual(&CtpClient::OnRtnMarketData))
-    .def("on_tick", pure_virtual(&CtpClient::OnTick))
-    .def("on_1min", pure_virtual(&CtpClient::On1Min))
-    .def("on_1min_tick", pure_virtual(&CtpClient::On1MinTick))
+    .def("on_md_front_connected", &CtpClient::OnMdFrontConnected)
+    .def("on_md_front_disconnected", &CtpClient::OnMdFrontDisconnected)
+    .def("on_md_user_login", &CtpClient::OnMdUserLogin)
+    .def("on_md_user_logout", &CtpClient::OnMdUserLogout)
+    .def("on_subscribe_market_data", &CtpClient::OnSubscribeMarketData)
+    .def("on_unsubscribe_market_data", &CtpClient::OnUnsubscribeMarketData)
+    .def("on_rtn_market_data", &CtpClient::OnRtnMarketData)
+    .def("on_tick", &CtpClient::OnTick)
+    .def("on_1min", &CtpClient::On1Min)
+    .def("on_1min_tick", &CtpClient::On1MinTick)
 
-    .def("td_login", &CtpClient::TdLogin)
-    .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
-    .def("query_order", &CtpClient::QueryOrder)
-    .def("query_trade", &CtpClient::QueryTrade)
-    .def("query_trading_account", &CtpClient::QueryTradingAccount)
-    .def("query_investor_position", &CtpClient::QueryInvestorPosition)
-    .def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
-    .def("query_market_data", &CtpClient::QueryMarketData, (arg("instrument_id"), arg("request_id")=0))
-    .def("insert_order", &CtpClient::InsertOrder,
-      (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"), arg("volume"),
-       arg("request_id")=0, arg("extra_options")=dict()))
-    .def("order_action", &CtpClient::InsertOrder,
-      (arg("order"), arg("action_flag"), arg("limit_price")=0.0,
-       arg("volume_change")=0, arg("request_id")=0))
-    .def("delete_order", &CtpClient::DeleteOrder,
-      (arg("order"), arg("request_id")=0))
-    .def("modify_order", &CtpClient::ModifyOrder,
-      (arg("order"), arg("limit_price")=0.0, arg("volume_change")=0, arg("request_id")=0))			
-    .def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
-    .def("on_td_user_login", pure_virtual(&CtpClient::OnTdUserLogin))
-    .def("on_td_user_logout", pure_virtual(&CtpClient::OnTdUserLogout))
-    .def("on_settlement_info_confirm", pure_virtual(&CtpClient::OnRspSettlementInfoConfirm))
-    .def("on_err_order_insert", pure_virtual(&CtpClient::OnErrOrderInsert))
-    .def("on_err_order_action", pure_virtual(&CtpClient::OnErrOrderAction))
-    .def("on_rtn_order", pure_virtual(&CtpClient::OnRtnOrder))
-    .def("on_rtn_trade", pure_virtual(&CtpClient::OnRtnTrade))
-    .def("on_rsp_order", pure_virtual(&CtpClient::OnRspQryOrder))
-    .def("on_rsp_trade", pure_virtual(&CtpClient::OnRspQryTrade))
-    .def("on_rsp_trading_account", pure_virtual(&CtpClient::OnRspQryTradingAccount))
-    .def("on_rsp_investor_position", pure_virtual(&CtpClient::OnRspQryInvestorPosition))
-    .def("on_rsp_investor_position_detail", pure_virtual(&CtpClient::OnRspQryInvestorPositionDetail))
-    .def("on_rsp_market_data", pure_virtual(&CtpClient::OnRspQryDepthMarketData))
-    .def("on_idle", pure_virtual(&CtpClient::OnIdle))
+    // .def("td_login", &CtpClient::TdLogin)
+    // .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
+    // .def("query_order", &CtpClient::QueryOrder)
+    // .def("query_trade", &CtpClient::QueryTrade)
+    // .def("query_trading_account", &CtpClient::QueryTradingAccount)
+    // .def("query_investor_position", &CtpClient::QueryInvestorPosition)
+    // .def("query_investor_position_detail", &CtpClient::QueryInvestorPositionDetail)
+    // .def("query_market_data", &CtpClient::QueryMarketData, (arg("instrument_id"), arg("request_id")=0))
+    // .def("insert_order", &CtpClient::InsertOrder,
+    //   (arg("instrument_id"), arg("direction"), arg("offset_flag"), arg("limit_price"), arg("volume"),
+    //    arg("request_id")=0, arg("extra_options")=dict()))
+    // .def("order_action", &CtpClient::InsertOrder,
+    //   (arg("order"), arg("action_flag"), arg("limit_price")=0.0,
+    //    arg("volume_change")=0, arg("request_id")=0))
+    // .def("delete_order", &CtpClient::DeleteOrder,
+    //   (arg("order"), arg("request_id")=0))
+    // .def("modify_order", &CtpClient::ModifyOrder,
+    //   (arg("order"), arg("limit_price")=0.0, arg("volume_change")=0, arg("request_id")=0))			
+    // .def("on_td_front_connected", pure_virtual(&CtpClient::OnTdFrontConnected))
+    // .def("on_td_user_login", pure_virtual(&CtpClient::OnTdUserLogin))
+    // .def("on_td_user_logout", pure_virtual(&CtpClient::OnTdUserLogout))
+    // .def("on_settlement_info_confirm", pure_virtual(&CtpClient::OnRspSettlementInfoConfirm))
+    // .def("on_err_order_insert", pure_virtual(&CtpClient::OnErrOrderInsert))
+    // .def("on_err_order_action", pure_virtual(&CtpClient::OnErrOrderAction))
+    // .def("on_rtn_order", pure_virtual(&CtpClient::OnRtnOrder))
+    // .def("on_rtn_trade", pure_virtual(&CtpClient::OnRtnTrade))
+    // .def("on_rsp_order", pure_virtual(&CtpClient::OnRspQryOrder))
+    // .def("on_rsp_trade", pure_virtual(&CtpClient::OnRspQryTrade))
+    // .def("on_rsp_trading_account", pure_virtual(&CtpClient::OnRspQryTradingAccount))
+    // .def("on_rsp_investor_position", pure_virtual(&CtpClient::OnRspQryInvestorPosition))
+    // .def("on_rsp_investor_position_detail", pure_virtual(&CtpClient::OnRspQryInvestorPositionDetail))
+    // .def("on_rsp_market_data", pure_virtual(&CtpClient::OnRspQryDepthMarketData))
+    // .def("on_idle", pure_virtual(&CtpClient::OnIdle))
     ;
-*/
 };

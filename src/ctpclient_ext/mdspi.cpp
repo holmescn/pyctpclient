@@ -57,8 +57,17 @@ void MdSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRs
 void MdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     _client->Enqueue(CtpClient::ResponseType::OnSubMarketData, pSpecificInstrument, pRspInfo, nRequestID, bIsLast);
+}
 
-    
+void MdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+    _client->Enqueue(CtpClient::ResponseType::OnUnSubMarketData, pSpecificInstrument, pRspInfo, nRequestID, bIsLast);
+}
+
+void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
+{
+    _client->Enqueue(CtpClient::ResponseType::OnRtnMarketData, pDepthMarketData, nullptr, 0, true);
+
     TickBar tickBar;
     memset(&tickBar, 0, sizeof tickBar);
     snprintf(tickBar.UpdateTime, 16, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
@@ -119,17 +128,8 @@ void MdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstr
         memcpy(&prev, &m1Bar, sizeof m1Bar);
     }
 
+    memcpy(m1Bar.UpdateTime, pDepthMarketData->UpdateTime, sizeof m1Bar.UpdateTime);
     _client->Enqueue(CtpClient::ResponseType::On1MinTick, &m1Bar);
-}
-
-void MdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
-{
-    _client->Enqueue(CtpClient::ResponseType::OnUnSubMarketData, pSpecificInstrument, pRspInfo, nRequestID, bIsLast);
-}
-
-void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
-{
-    _client->Enqueue(CtpClient::ResponseType::OnRtnMarketData, pDepthMarketData, nullptr, 0, true);
 }
 
 void MdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)

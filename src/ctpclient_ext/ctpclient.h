@@ -32,31 +32,6 @@ class TraderSpi;
 class CThostFtdcMdApi;
 class CThostFtdcTraderApi;
 
-#pragma region Exception
-
-struct RequestNetworkException
-{
-    std::string request;
-};
-
-struct FullRequestQueueException
-{
-    std::string request;
-};
-
-struct RequestTooFrequentlyException
-{
-    std::string request;
-};
-
-struct UnknownRequestException
-{
-    int rc;
-    std::string request;
-};
-
-#pragma endregion
-
 #pragma region Enums
 
 enum Direction { D_Buy, D_Sell };
@@ -286,7 +261,7 @@ public:
     // MdSpi
 	virtual void OnMdFrontConnected() = 0;
 	virtual void OnMdFrontDisconnected(int nReason) = 0;
-	virtual void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo) = 0;
 	virtual void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) = 0;
     virtual void OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
     virtual void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) = 0;
@@ -309,24 +284,19 @@ public:
 
     void TdLogin();
     void ConfirmSettlementInfo();
-    // void InsertOrder(std::string instrumentId,
-    //                  Direction direction,
-    //                  OffsetFlag offsetFlag,
-    //                  TThostFtdcPriceType limitPrice,
-    //                  TThostFtdcVolumeType volume,
-    //                  int requestId,
-    //                  boost::python::dict extraOptions
-    //                 );
-    // void OrderAction(boost::shared_ptr<CThostFtdcOrderField> pOrder,
-    //                  OrderActionFlag actionFlag,
-    //                  TThostFtdcPriceType limitPrice,
-    //                  TThostFtdcVolumeType volumeChange,
-    //                  int requestId);
-    // void DeleteOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder, int requestId);
-    // void ModifyOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder,
-    //                  TThostFtdcPriceType limitPrice,
-    //                  TThostFtdcVolumeType volumeChange,
-    //                  int requestId);
+    void InsertOrder(
+        const std::string &instrumentId,
+        Direction direction,
+        OffsetFlag offsetFlag,
+        TThostFtdcPriceType limitPrice,
+        TThostFtdcVolumeType volume,
+        py::kwargs kwargs);
+    void OrderAction(std::shared_ptr<CThostFtdcOrderField> pOrder, 
+        OrderActionFlag actionFlag,
+        TThostFtdcPriceType limitPrice,
+        TThostFtdcVolumeType volumeChange,
+        int requestId);
+    void DeleteOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, int requestId);
 
 public:
     // TraderSpi
@@ -350,15 +320,14 @@ public:
 };
 
 
-class CtpClientWrap : public CtpClient
+struct CtpClientWrap : CtpClient
 {
-public:
     /* Inherit the constructors */
     using CtpClient::CtpClient;
 
 	void OnMdFrontConnected() override;
 	void OnMdFrontDisconnected(int nReason) override;
-	void OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo) override;
+	void OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo) override;
 	void OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo) override;
     void OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;
     void OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo) override;

@@ -42,7 +42,7 @@ with open('src/pyctpclient/__init__.py', 'r') as fp:
             version = matched.group(1)
 
 
-ctpclient_ext = Extension('pyctpclient._ctpclient',
+ctpclient_ext = Extension('pyctpclient.ctpclient',
                           sources=[
                             'src/ctpclient_ext/binding.cpp',
                             'src/ctpclient_ext/ctpclient.cpp',

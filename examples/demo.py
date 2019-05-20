@@ -44,7 +44,50 @@ class Client(CtpClient):
 
         :type data: pyctpclient.ctpclient.MarketData
         """
-        pass
+        print(data.trading_day)
+        print(data.instrument_id)
+        print(data.exchange_id)
+        print(data.exchange_inst_id)
+        print(data.last_price)
+        print(data.pre_settlement_price)
+        print(data.pre_close_price)
+        print(data.pre_open_interest)
+        print(data.open_price)
+        print(data.highest_price)
+        print(data.lowest_price)
+        print(data.volume)
+        print(data.turnover)
+        print(data.open_interest)
+        print(data.close_price)
+        print(data.settlement_price)
+        print(data.upper_limit_price)
+        print(data.lower_limit_price)
+        print(data.pre_delta)
+        print(data.curr_delta)
+        print(data.update_time)
+        print(data.update_millisec)
+        print(data.bid_price1)
+        print(data.bid_volume1)
+        print(data.ask_price1)
+        print(data.ask_volume1)
+        print(data.bid_price2)
+        print(data.bid_volume2)
+        print(data.ask_price2)
+        print(data.ask_volume2)
+        print(data.bid_price3)
+        print(data.bid_volume3)
+        print(data.ask_price3)
+        print(data.ask_volume3)
+        print(data.bid_price4)
+        print(data.bid_volume4)
+        print(data.ask_price4)
+        print(data.ask_volume4)
+        print(data.bid_price5)
+        print(data.bid_volume5)
+        print(data.ask_price5)
+        print(data.ask_volume5)
+        print(data.average_price)
+        print(data.action_day)
 
     def on_tick(self, data):
         """MarketData 数据回传函数，这个是简化后的回传数据，去除了不常用的一些数据。
@@ -190,8 +233,8 @@ if __name__ == "__main__":
     # td_address: tcp://180.168.146.187:10030
     # 创建 CTP Client 实例
     c = Client(
-        md_address="tcp://180.168.146.187:10031",
-        td_address="tcp://180.168.146.187:10030",
+        md_address="tcp://180.168.146.187:10011",
+        td_address="tcp://180.168.146.187:10001",
         broker_id="9999",
         user_id="",
         password=""

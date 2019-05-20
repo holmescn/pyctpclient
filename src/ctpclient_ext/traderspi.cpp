@@ -31,7 +31,7 @@ void TraderSpi::OnFrontConnected()
 {
     CtpClient::Response r;
     memset(&r, 0, sizeof r);
-    r.type = CtpClient::ResponseType::OnTdFrontDisconnected;
+    r.type = CtpClient::ResponseType::OnTdFrontConnected;
     _client->Enqueue(r);
 }
 

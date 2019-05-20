@@ -34,12 +34,12 @@ class CThostFtdcTraderApi;
 
 #pragma region Enums
 
-enum class Direction : char {
+enum Direction {
     D_Buy = THOST_FTDC_D_Buy,
     D_Sell = THOST_FTDC_D_Sell
 };
 
-enum class OffsetFlag : char {
+enum OffsetFlag {
     OF_Open = THOST_FTDC_OF_Open,
     OF_Close = THOST_FTDC_OF_Close,
     OF_ForceClose = THOST_FTDC_OF_ForceClose,
@@ -49,7 +49,7 @@ enum class OffsetFlag : char {
     OF_LocalForceClose = THOST_FTDC_OF_LocalForceClose
 };
 
-enum class OrderPriceType : char {
+enum OrderPriceType {
     OPT_AnyPrice, OPT_LimitPrice, OPT_BestPrice,
     OPT_LastPrice, OPT_LastPricePlusOneTick, OPT_LastPricePlusTwoTicks, OPT_LastPricePlusThreeTicks,
     OPT_AskPrice1, OPT_AskPrice1PlusOneTick, OPT_AskPrice1PlusTwoTicks, OPT_AskPrice1PlusThreeTicks,
@@ -57,14 +57,14 @@ enum class OrderPriceType : char {
     OPT_FiveLevelPrice
 };
 
-enum class HedgeFlag : char {
+enum HedgeFlag {
     HF_Speculation = THOST_FTDC_HF_Speculation,
     HF_Arbitrage = THOST_FTDC_HF_Arbitrage,
     HF_Hedge = THOST_FTDC_HF_Hedge,
     HF_MarketMaker = THOST_FTDC_HF_MarketMaker
 };
 
-enum class TimeCondition : char {
+enum TimeCondition {
     TC_IOC = THOST_FTDC_TC_IOC,
     TC_GFS = THOST_FTDC_TC_GFS,
     TC_GFD = THOST_FTDC_TC_GFD,
@@ -73,13 +73,13 @@ enum class TimeCondition : char {
     TC_GFA = THOST_FTDC_TC_GFA
 };
 
-enum class VolumeCondition : char {
+enum VolumeCondition {
     VC_AV = THOST_FTDC_VC_AV,
     VC_MV = THOST_FTDC_VC_MV,
     VC_CV = THOST_FTDC_VC_CV
 };
 
-enum class ContingentCondition : char {
+enum ContingentCondition {
     CC_Immediately = THOST_FTDC_CC_Immediately,
     CC_Touch = THOST_FTDC_CC_Touch,
     CC_TouchProfit = THOST_FTDC_CC_TouchProfit,
@@ -98,12 +98,12 @@ enum class ContingentCondition : char {
     CC_BidPriceLesserEqualStopPrice = THOST_FTDC_CC_BidPriceLesserEqualStopPrice
 };
 
-enum class OrderActionFlag : char {
+enum OrderActionFlag {
     AF_Delete = THOST_FTDC_AF_Delete,
     AF_Modify = THOST_FTDC_AF_Modify
 };
 
-enum class OrderStatus : char {
+enum OrderStatus {
     OST_AllTraded = THOST_FTDC_OST_AllTraded,
     OST_PartTradedQueueing = THOST_FTDC_OST_PartTradedQueueing,
     OST_PartTradedNotQueueing = THOST_FTDC_OST_PartTradedNotQueueing,
@@ -115,7 +115,7 @@ enum class OrderStatus : char {
     OST_Touched = THOST_FTDC_OST_Touched
 };
 
-enum class OrderSubmitStatus : char {
+enum OrderSubmitStatus {
     OSS_InsertSubmitted = THOST_FTDC_OSS_InsertSubmitted,
     OSS_CancelSubmitted = THOST_FTDC_OSS_CancelSubmitted,
     OSS_ModifySubmitted = THOST_FTDC_OSS_ModifySubmitted,
@@ -125,7 +125,7 @@ enum class OrderSubmitStatus : char {
     OSS_ModifyRejected = THOST_FTDC_OSS_ModifyRejected
 };
 
-enum class OrderActionStatus : char {
+enum OrderActionStatus {
     OAS_Submitted = THOST_FTDC_OAS_Submitted,
     OAS_Accepted = THOST_FTDC_OAS_Accepted,
     OAS_Rejected = THOST_FTDC_OAS_Rejected
@@ -236,6 +236,8 @@ class CtpClient
             this->bIsLast = bIsLast;    
             if (pRspInfo) {
                 memcpy(&this->RspInfo, pRspInfo, sizeof this->RspInfo);
+            } else {
+                this->RspInfo.ErrorID = -1;
             }
         }
     };

@@ -30,10 +30,16 @@ from .ctpclient import (
 
 # Enums
 from .ctpclient import (
-    D_BUY, D_SELL,
+    D_BUY,
+    D_SELL,
 
-    OF_OPEN, OF_CLOSE, OF_FORCE_CLOSE, OF_CLOSE_TODAY,
-    OF_CLOSE_YESTERDAY, OF_FORCE_OFF, OF_LOCAL_FORCE_CLOSE,
+    OF_OPEN,
+    OF_CLOSE,
+    OF_FORCE_CLOSE,
+    OF_CLOSE_TODAY,
+    OF_CLOSE_YESTERDAY,
+    OF_FORCE_OFF,
+    OF_LOCAL_FORCE_CLOSE,
 
     OST_ALL_TRADED,
     OST_PART_TRADED_QUEUEING,

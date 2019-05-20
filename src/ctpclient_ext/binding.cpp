@@ -576,7 +576,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("investor_id", &CThostFtdcSettlementInfoConfirmField::InvestorID)
     .def_readonly("confirm_date", &CThostFtdcSettlementInfoConfirmField::ConfirmDate)
     .def_readonly("confirm_time", &CThostFtdcSettlementInfoConfirmField::ConfirmTime)
-    .def_readonly("currency_id", &CThostFtdcSettlementInfoConfirmField::CurrencyID)
+    .def_readonly("currency_id",  &CThostFtdcSettlementInfoConfirmField::CurrencyID)
     ;
 
   py::class_<CThostFtdcTradingAccountField>(m, "TradingAccount")
@@ -763,7 +763,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("mac_address", &CThostFtdcInputOrderActionField::MacAddress)
     ;
 
-  py::class_<CThostFtdcOrderField, std::shared_ptr<CThostFtdcOrderField> >(m, "Order")
+  py::class_<CThostFtdcOrderField, std::shared_ptr<CThostFtdcOrderField>>(m, "Order")
     .def_readonly("broker_id", &CThostFtdcOrderField::BrokerID)
     .def_readonly("investor_id", &CThostFtdcOrderField::InvestorID)
     .def_readonly("instrument_id", &CThostFtdcOrderField::InstrumentID)

@@ -373,6 +373,9 @@ void CtpClient::UnsubscribeMarketData(const std::vector<std::string> &instrument
 
 void CtpClientWrap::OnMdFrontConnected()
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -383,6 +386,9 @@ void CtpClientWrap::OnMdFrontConnected()
 
 void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -394,6 +400,9 @@ void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 
 void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -406,6 +415,9 @@ void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogi
 
 void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -418,6 +430,9 @@ void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, 
 
 void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -431,6 +446,9 @@ void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentFiel
 
 void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -444,6 +462,9 @@ void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentFi
 
 void CtpClientWrap::OnRtnMarketData(std::shared_ptr<CThostFtdcDepthMarketDataField> pDepthMarketData)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -455,6 +476,9 @@ void CtpClientWrap::OnRtnMarketData(std::shared_ptr<CThostFtdcDepthMarketDataFie
 
 void CtpClientWrap::OnTick(std::shared_ptr<TickBar> pBar)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -466,6 +490,9 @@ void CtpClientWrap::OnTick(std::shared_ptr<TickBar> pBar)
 
 void CtpClientWrap::On1Min(std::shared_ptr<M1Bar> pBar)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -477,6 +504,9 @@ void CtpClientWrap::On1Min(std::shared_ptr<M1Bar> pBar)
 
 void CtpClientWrap::On1MinTick(std::shared_ptr<M1Bar> pBar)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -488,6 +518,9 @@ void CtpClientWrap::On1MinTick(std::shared_ptr<M1Bar> pBar)
 
 void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -694,6 +727,9 @@ void CtpClient::DeleteOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, int re
 
 void CtpClientWrap::OnTdFrontConnected()
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -704,6 +740,9 @@ void CtpClientWrap::OnTdFrontConnected()
 
 void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -715,6 +754,9 @@ void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 
 void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -727,6 +769,9 @@ void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogi
 
 void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -739,6 +784,9 @@ void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, 
 
 void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField &SettlementInfoConfirm, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -751,6 +799,9 @@ void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoCon
 
 void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -763,6 +814,9 @@ void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder
 
 void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField &InputOrderAction, const CThostFtdcOrderActionField &OrderAction, const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -776,6 +830,9 @@ void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField &Inpu
 
 void CtpClientWrap::OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -787,6 +844,9 @@ void CtpClientWrap::OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder)
 
 void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField &Trade)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -798,6 +858,9 @@ void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField &Trade)
 
 void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField &RspInfo)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
@@ -809,6 +872,9 @@ void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField &RspInfo)
 
 void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
@@ -822,6 +888,9 @@ void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, 
 
 void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
@@ -835,6 +904,9 @@ void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThos
 
 void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField &TradingAccount, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
@@ -848,6 +920,9 @@ void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField &
 
 void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField &InvestorPosition, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
@@ -861,6 +936,9 @@ void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionFie
 
 void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField &InvestorPositionDetail, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
@@ -874,6 +952,9 @@ void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPosit
 
 void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField &DepthMarketData, const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast)
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
@@ -890,6 +971,9 @@ void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField
 
 void CtpClientWrap::OnIdle()
 {
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,

@@ -17,9 +17,8 @@
 #include <csignal>
 #include <string>
 #include <future>
+#include <sstream>
 #include <iostream>
-#include <boost/python.hpp>
-#include <boost/filesystem.hpp>
 #include "ThostFtdcMdApi.h"
 #include "ThostFtdcTraderApi.h"
 #include "ThostFtdcUserApiDataType.h"
@@ -27,7 +26,6 @@
 #include "traderspi.h"
 #include "ctpclient.h"
 
-using namespace boost::python;
 using namespace std::chrono_literals;
 
 std::promise<void> g_exitPromise;
@@ -42,27 +40,34 @@ void signal_handler(int signal)
 
 void _assertRequest(int rc, const char *request)
 {
-    switch (rc) {
-    case 0:
+    if (rc == 0) {
         // 发送成功
-        break;
-    case -1:
-        // 因网络原因发送失败
-        throw RequestNetworkException{request};
-    case -2:
-        // 未处理请求队列总数量超限
-        throw FullRequestQueueException{request};
-    case -3:
-        // 每秒发送请求数量超限
-        throw RequestTooFrequentlyException{request};
-    default:
-        throw UnknownRequestException{rc, request};
+    } else {
+        std::stringstream ss;
+        ss << request << " failed because of ";
+        switch (rc) {
+        case -1:
+            // 因网络原因发送失败
+            ss << "network error.";
+            throw std::runtime_error(ss.str());
+        case -2:
+            // 未处理请求队列总数量超限
+            ss << "excessing the limit of request queue.";
+            throw std::runtime_error(ss.str());
+        case -3:
+            // 每秒发送请求数量超限
+            ss << "too frequently request.";
+            throw std::runtime_error(ss.str());
+        default:
+            ss << "unknown reason: " << rc;
+            throw std::runtime_error(ss.str());
+        }
     }
 }
 
 #pragma region General functions
 
-CtpClient::CtpClient(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
+CtpClient::CtpClient(const std::string &mdAddr, const std::string &tdAddr, const std::string &brokerId, const std::string &userId, const std::string &password)
 : _mdAddr(mdAddr), _tdAddr(tdAddr), _brokerId(brokerId), _userId(userId), _password(password)
 {
     std::signal(SIGINT, signal_handler);
@@ -79,30 +84,23 @@ CtpClient::~CtpClient()
     }
 }
 
-tuple CtpClient::GetApiVersion()
+py::tuple CtpClient::GetApiVersion()
 {
     std::string v1 = CThostFtdcMdApi::GetApiVersion();
     std::string v2 = CThostFtdcTraderApi::GetApiVersion();
-    return boost::python::make_tuple(v1, v2);
+    return py::make_tuple(v1, v2);
 }
 
 void CtpClient::Init()
 {
-    using namespace boost::filesystem;
-
-    if (_flowPath == "") {
-        auto tmpPath = temp_directory_path() / "ctp";
-        _flowPath = tmpPath.string();
-    }
-
-    auto rootPath = path(_flowPath);
-    auto mdPath = rootPath / "md/";
-    auto tdPath = rootPath / "td/";
-    create_directory(rootPath);
+#ifdef WIN32
+#define PATH_SEP "\\"
+#else
+#define PATH_SEP "/"
+#endif
 
     if (_mdAddr != "") {
-        create_directory(mdPath);
-        auto mdFlowPath = mdPath.string();
+        auto mdFlowPath = _flowPath + PATH_SEP "md-";
 
         _mdApi = CThostFtdcMdApi::CreateFtdcMdApi(mdFlowPath.c_str(), /*using udp*/false, /*multicast*/false);
         _mdSpi = new MdSpi(this);
@@ -112,8 +110,7 @@ void CtpClient::Init()
     }
 
     if (_tdAddr != "") {
-        create_directory(tdPath);
-        auto tdFlowPath = tdPath.string();
+        auto tdFlowPath = _flowPath + PATH_SEP "td-";
 
         _tdApi = CThostFtdcTraderApi::CreateFtdcTraderApi(tdFlowPath.c_str());
         _tdSpi = new TraderSpi(this);
@@ -128,11 +125,10 @@ void CtpClient::Init()
     _thread = std::thread([this](std::shared_future<void> exitSignal) {
         while (exitSignal.wait_for(1100ms) == std::future_status::timeout) {
             if (_requestResponsed.load(std::memory_order_acquire)) {
-                CtpClient::Request *req = nullptr;
+                CtpClient::Request req;
                 if (_requestQueue.try_dequeue(req)) {
                     _requestResponsed.store(false, std::memory_order_release);
-                    ProcessRequest(req);
-                    delete req;
+                    ProcessRequest(&req);
                 }
             }
         }
@@ -143,15 +139,14 @@ void CtpClient::Join()
 {
     auto timer = std::chrono::steady_clock::now();
     while (g_exitSignal.wait_for(10ms) == std::future_status::timeout) {
-        CtpClient::Response *rsp = nullptr;
+        CtpClient::Response rsp;
         while (_responseQueue.try_dequeue(rsp)) {
-            ProcessResponse(rsp);
-            delete rsp;
+            ProcessResponse(&rsp);
         }
 
         {
             auto duration = std::chrono::steady_clock::now() - timer;
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 1s) {
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > _idleDelay * 1ms) {
                 OnIdle();
                 timer = std::chrono::steady_clock::now();
             }
@@ -166,7 +161,13 @@ void CtpClient::Exit()
     g_exitPromise.set_value();
 }
 
-void CtpClient::Push(CtpClient::Response *r)
+void CtpClient::Enqueue(ResponseType type, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
+    Response r;
+    r.Init(type, pRspInfo, nRequestID, bIsLast);
+    Enqueue(r);
+}
+
+void CtpClient::Enqueue(const CtpClient::Response &r)
 {
     _responseQueue.enqueue(r);
 }
@@ -207,22 +208,47 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
         OnMdFrontDisconnected(r->nReason);
         break;
     case ResponseType::OnMdUserLogin:
-        OnMdUserLogin(&r->RspUserLogin, &r->RspInfo);
+        OnMdUserLogin(r->RspUserLogin, r->RspInfo);
         break;
     case ResponseType::OnMdUserLogout:
-        OnMdUserLogout(&r->UserLogout, &r->RspInfo);
+        OnMdUserLogout(r->UserLogout, r->RspInfo);
         break;
     case ResponseType::OnSubMarketData:
-        OnSubscribeMarketData(&r->SpecificInstrument, &r->RspInfo);
+        OnSubscribeMarketData(r->SpecificInstrument, r->RspInfo, r->bIsLast);
         break;
     case ResponseType::OnUnSubMarketData:
-        OnUnsubscribeMarketData(&r->SpecificInstrument, &r->RspInfo);
+        OnUnsubscribeMarketData(r->SpecificInstrument, r->RspInfo, r->bIsLast);
         break;
     case ResponseType::OnRtnMarketData:
-        OnRtnMarketData(&r->DepthMarketData);
+    {
+        auto pDepthMarketData = std::make_shared<CThostFtdcDepthMarketDataField>();
+        memcpy(pDepthMarketData.get(), &r->DepthMarketData, sizeof r->DepthMarketData);
+        OnRtnMarketData(pDepthMarketData);
+    }
+        break;
+    case ResponseType::OnTick:
+    {
+        auto pTickBar = std::make_shared<TickBar>();
+        memcpy(pTickBar.get(), &r->tick, sizeof r->tick);
+        OnTick(pTickBar);
+    }
+        break;
+    case ResponseType::On1Min:
+    {
+        auto pM1Bar = std::make_shared<M1Bar>();
+        memcpy(pM1Bar.get(), &r->m1, sizeof r->m1);
+        On1Min(pM1Bar);
+    }
+        break;
+    case ResponseType::On1MinTick:
+    {
+        auto pM1Bar = std::make_shared<M1Bar>();
+        memcpy(pM1Bar.get(), &r->m1, sizeof r->m1);
+        On1MinTick(pM1Bar);
+    }
         break;
     case ResponseType::OnMdError:
-        OnMdError(&r->RspInfo);
+        OnMdError(r->RspInfo);
         break;
     case ResponseType::OnTdFrontConnected:
         OnTdFrontConnected();
@@ -231,77 +257,70 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
         OnTdFrontDisconnected(r->nReason);
         break;
     case ResponseType::OnTdUserLogin:
-        OnTdUserLogin(&r->RspUserLogin, &r->RspInfo);
+        OnTdUserLogin(r->RspUserLogin, r->RspInfo);
         break;
     case ResponseType::OnTdUserLogout:
-        OnTdUserLogout(&r->UserLogout, &r->RspInfo);
+        OnTdUserLogout(r->UserLogout, r->RspInfo);
         break;
     case ResponseType::OnSettlementInfoConfirm:
-        OnRspSettlementInfoConfirm(&r->SettlementInfoConfirm, &r->RspInfo);
+        OnRspSettlementInfoConfirm(r->SettlementInfoConfirm, r->RspInfo);
         break;
     case ResponseType::OnRspOrderInsert:
-        OnErrOrderInsert(&r->InputOrder, &r->RspInfo);
+        OnErrOrderInsert(r->InputOrder, r->RspInfo);
         break;
     case ResponseType::OnRspOrderAction:
-        OnErrOrderAction(&r->InputOrderAction, nullptr, &r->RspInfo);
+        OnErrOrderAction(r->InputOrderAction, r->OrderAction, r->RspInfo);
         break;
     case ResponseType::OnErrRtnOrderInsert:
-        OnErrOrderInsert(&r->InputOrder, &r->RspInfo);
+        OnErrOrderInsert(r->InputOrder, r->RspInfo);
         break;
     case ResponseType::OnErrRtnOrderAction:
-        OnErrOrderAction(nullptr, &r->OrderAction, &r->RspInfo);
+        OnErrOrderAction(r->InputOrderAction, r->OrderAction, r->RspInfo);
         break;
     case ResponseType::OnRtnOrder:
     {
-        CThostFtdcOrderField *pNewOrder = new CThostFtdcOrderField;
-        memcpy(pNewOrder, &r->Order, sizeof r->Order);
-        OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField>(pNewOrder));
+        auto pOrder = std::make_shared<CThostFtdcOrderField>();
+        memcpy(pOrder.get(), &r->Order, sizeof r->Order);
+        OnRtnOrder(pOrder);
     }
         break;
     case ResponseType::OnRtnTrade:
-        OnRtnTrade(&r->Trade);
+        OnRtnTrade(r->Trade);
         break;
     case ResponseType::OnTdError:
-        OnTdError(&r->RspInfo);
+        OnTdError(r->RspInfo);
         break;
     case ResponseType::OnRspQryOrder:
-        OnRspQryOrder(&r->Order, &r->RspInfo, r->bIsLast);
+    {
+        auto pOrder = std::make_shared<CThostFtdcOrderField>();
+        memcpy(pOrder.get(), &r->Order, sizeof r->Order);
+        OnRspQryOrder(pOrder, r->RspInfo, r->bIsLast);
+    }
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTrade:
-        OnRspQryTrade(&r->Trade, &r->RspInfo, r->bIsLast);
+        OnRspQryTrade(r->Trade, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTradingAccount:
-        OnRspQryTradingAccount(&r->TradingAccount, &r->RspInfo, r->bIsLast);
+        OnRspQryTradingAccount(r->TradingAccount, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPosition:
-        OnRspQryInvestorPosition(&r->InvestorPosition, &r->RspInfo, r->bIsLast);
+        OnRspQryInvestorPosition(r->InvestorPosition, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryDepthMarketData:
-        OnRspQryDepthMarketData(&r->DepthMarketData, &r->RspInfo, r->nRequestID, r->bIsLast);
+        OnRspQryDepthMarketData(r->DepthMarketData, r->RspInfo, r->nRequestID, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPositionDetail:
-        OnRspQryInvestorPositionDetail(&r->InvestorPositionDetail, &r->RspInfo, r->bIsLast);
+        OnRspQryInvestorPositionDetail(r->InvestorPositionDetail, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     default:
         throw std::invalid_argument("unhandled response type.");
     }
-}
-
-CtpClientWrap::CtpClientWrap(std::string mdAddr, std::string tdAddr, std::string brokerId, std::string userId, std::string password)
-: CtpClient(mdAddr, tdAddr, brokerId, userId, password)
-{
-    //
-}
-
-CtpClientWrap::~CtpClientWrap()
-{
-    //
 }
 
 #pragma endregion
@@ -321,27 +340,27 @@ void CtpClient::MdLogin()
     assert_request(_mdApi->ReqUserLogin(&req, 0));
 }
 
-void CtpClient::SubscribeMarketData(boost::python::list instrumentIds)
+void CtpClient::SubscribeMarketData(const std::vector<std::string> &instrumentIds)
 {
-    size_t N = len(instrumentIds);
+    size_t N = instrumentIds.size();
     if (N == 0) return;
 
     char **ppInstrumentIDs = new char*[N];
     for (size_t i = 0; i < N; i++) {
-        ppInstrumentIDs[i] = extract<char*>(instrumentIds[i]);
+        ppInstrumentIDs[i] = const_cast<char*>(instrumentIds[i].c_str());
     }
     _mdApi->SubscribeMarketData(ppInstrumentIDs, N);
     delete[] ppInstrumentIDs;
 }
 
-void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
+void CtpClient::UnsubscribeMarketData(const std::vector<std::string> &instrumentIds)
 {
-    size_t N = len(instrumentIds);
+    size_t N = instrumentIds.size();
     if (N == 0) return;
 
     char **ppInstrumentIDs = new char*[N];
     for (size_t i = 0; i < N; i++) {
-        ppInstrumentIDs[i] = extract<char*>(instrumentIds[i]);
+        ppInstrumentIDs[i] = const_cast<char*>(instrumentIds[i].c_str());
     }
     _mdApi->UnSubscribeMarketData(ppInstrumentIDs, N);
     delete[] ppInstrumentIDs;
@@ -354,159 +373,128 @@ void CtpClient::UnsubscribeMarketData(boost::python::list instrumentIds)
 
 void CtpClientWrap::OnMdFrontConnected()
 {
-    if (override fn = get_override("on_md_front_connected")) {
-        fn();
-    } else {
-        std::cerr << "Market Data Front Connected" << std::endl;
-        MdLogin();
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_md_front_connected",
+        OnMdFrontConnected
+    );
 }
 
 void CtpClientWrap::OnMdFrontDisconnected(int nReason)
 {
-    if (override fn = get_override("on_md_front_disconnected")) {
-        fn(nReason);
-    } else {
-        std::cerr << "Market Data Front Disconnected with reason = " << nReason << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_md_front_disconnected",
+        OnMdFrontDisconnected,
+        nReason
+    );
 }
 
-void CtpClientWrap::OnMdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_md_user_login")) {
-        fn(pRspUserLogin, pRspInfo);
-    } else {
-        std::cerr << "Market Data User Login" << std::endl;
-        if (len(_instrumentIds) > 0) {
-            SubscribeMarketData(_instrumentIds);
-        }
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_md_user_login",
+        OnMdUserLogin,
+        RspUserLogin,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_md_user_logout")) {
-        fn(pUserLogout, pRspInfo);
-    } else {
-        std::cerr << "Market Data User Logout" << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_md_user_logout",
+        OnMdUserLogout,
+        UserLogout,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_subscribe_market_data")) {
-        fn(pSpecificInstrument, pRspInfo);
-    } else {
-        std::cerr << "Market Data subscribed " << pSpecificInstrument->InstrumentID << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_subscribe_market_data",
+        OnSubscribeMarketData,
+        SpecificInstrument,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_unsubscribe_market_data")) {
-        fn(pSpecificInstrument, pRspInfo);
-    } else {
-        std::cerr << "Market Data unsubscribed " << pSpecificInstrument->InstrumentID << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_unsubscribe_market_data",
+        OnUnsubscribeMarketData,
+        SpecificInstrument,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
+void CtpClientWrap::OnRtnMarketData(std::shared_ptr<CThostFtdcDepthMarketDataField> pDepthMarketData)
 {
-    if (override fn = get_override("on_rtn_market_data")) {
-        fn(pDepthMarketData);
-    }
-
-    TickBar tickBar;
-    memset(&tickBar, 0, sizeof tickBar);
-    snprintf(tickBar.UpdateTime, 16, "%s.%03d", pDepthMarketData->UpdateTime, pDepthMarketData->UpdateMillisec);
-    strncpy(tickBar.TradingDay, pDepthMarketData->TradingDay, sizeof tickBar.TradingDay);
-    strncpy(tickBar.ActionDay, pDepthMarketData->ActionDay, sizeof tickBar.ActionDay);
-    strncpy(tickBar.InstrumentID, pDepthMarketData->InstrumentID, sizeof tickBar.InstrumentID);
-    tickBar.Price = pDepthMarketData->LastPrice;
-    tickBar.Volume = pDepthMarketData->Volume;
-    tickBar.Turnover = pDepthMarketData->Turnover;
-    tickBar.Position = pDepthMarketData->OpenInterest;
-
-    M1Bar m1Bar;
-    memset(&m1Bar, 0, sizeof m1Bar);
-    memcpy(m1Bar.InstrumentID, pDepthMarketData->InstrumentID, sizeof m1Bar.InstrumentID);
-    memcpy(m1Bar.TradingDay, pDepthMarketData->TradingDay, sizeof m1Bar.TradingDay);
-    memcpy(m1Bar.ActionDay, pDepthMarketData->ActionDay, sizeof m1Bar.ActionDay);
-    memcpy(m1Bar.UpdateTime, pDepthMarketData->UpdateTime, 5);
-
-    std::string m1Now(m1Bar.UpdateTime);
-    std::string instrumentId(pDepthMarketData->InstrumentID);
-    auto price = pDepthMarketData->LastPrice;
-
-    auto iter = _m1Bars.find(instrumentId);
-    if (iter == _m1Bars.end()) {
-        m1Bar.OpenPrice = m1Bar.HighestPrice = m1Bar.LowestPrice = m1Bar.ClosePrice = price;
-        m1Bar.BaseVolume = pDepthMarketData->Volume;
-        m1Bar.BaseTurnover = pDepthMarketData->Turnover;
-        m1Bar.TickVolume = pDepthMarketData->Volume;
-        m1Bar.TickTurnover = pDepthMarketData->Turnover;
-        m1Bar.Volume = pDepthMarketData->Volume;
-        m1Bar.Turnover = pDepthMarketData->Turnover;
-        m1Bar.Position = pDepthMarketData->OpenInterest;
-        _m1Bars[instrumentId] = m1Bar;
-    } else {
-        auto &prev = iter->second;
-        if (m1Now == prev.UpdateTime) {
-            m1Bar.OpenPrice = prev.OpenPrice;
-            m1Bar.HighestPrice = price > prev.HighestPrice ? price : prev.HighestPrice;
-            m1Bar.LowestPrice = price < prev.LowestPrice ? price : prev.LowestPrice;
-            m1Bar.ClosePrice = price;
-            m1Bar.BaseVolume = prev.BaseVolume;
-            m1Bar.BaseTurnover = prev.BaseTurnover;
-        } else {
-            m1Bar.OpenPrice = m1Bar.HighestPrice = m1Bar.LowestPrice = m1Bar.ClosePrice = price;
-            m1Bar.BaseVolume = prev.TickVolume;
-            m1Bar.BaseTurnover = prev.TickTurnover;
-
-            On1Min(&prev);
-        }
-
-        m1Bar.TickVolume = pDepthMarketData->Volume;
-        m1Bar.TickTurnover = pDepthMarketData->Turnover;
-        m1Bar.Position = pDepthMarketData->OpenInterest;
-        m1Bar.Volume = m1Bar.TickVolume > m1Bar.BaseVolume ? m1Bar.TickVolume - m1Bar.BaseVolume : m1Bar.TickVolume;
-        m1Bar.Turnover = m1Bar.TickTurnover > m1Bar.BaseTurnover ? m1Bar.TickTurnover - m1Bar.BaseTurnover : m1Bar.TickTurnover;
-
-        memcpy(&prev, &m1Bar, sizeof m1Bar);
-    }
-
-    OnTick(&tickBar);
-    On1MinTick(&m1Bar);
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_rtn_market_data",
+        OnRtnMarketData,
+        pDepthMarketData
+    );
 }
 
-void CtpClientWrap::OnTick(TickBar *bar)
+void CtpClientWrap::OnTick(std::shared_ptr<TickBar> pBar)
 {
-    if (override fn = get_override("on_tick")) {
-        fn(bar);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_tick",
+        OnTick,
+        pBar
+    );
 }
 
-void CtpClientWrap::On1Min(M1Bar *bar)
+void CtpClientWrap::On1Min(std::shared_ptr<M1Bar> pBar)
 {
-    if (override fn = get_override("on_1min")) {
-        fn(bar);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_1min",
+        On1Min,
+        pBar
+    );
 }
 
-void CtpClientWrap::On1MinTick(M1Bar *bar)
+void CtpClientWrap::On1MinTick(std::shared_ptr<M1Bar> pBar)
 {
-    if (override fn = get_override("on_1min_tick")) {
-        fn(bar);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_1min_tick",
+        On1MinTick,
+        pBar
+    );
 }
 
-void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_md_error")) {
-        fn(pRspInfo);
-    } else {
-        std::cerr << "Market Data Error: " << pRspInfo->ErrorID << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_md_error",
+        OnMdError,
+        RspInfo
+    );
 }
 
 #pragma endregion // Market Data SPI
@@ -538,88 +526,82 @@ void CtpClient::ConfirmSettlementInfo()
 
 void CtpClient::QueryOrder()
 {
-    auto r = new CtpClient::Request;
-    memset(r, 0, sizeof *r);
-    r->type = RequestType::QueryOrder;
-    strncpy(r->QryOrder.BrokerID, _brokerId.c_str(), sizeof r->QryOrder.BrokerID);
-    strncpy(r->QryOrder.InvestorID, _userId.c_str(), sizeof r->QryOrder.InvestorID);
+    CtpClient::Request r;
+    memset(&r, 0, sizeof r);
+    r.type = RequestType::QueryOrder;
+    strncpy(r.QryOrder.BrokerID, _brokerId.c_str(), sizeof r.QryOrder.BrokerID);
+    strncpy(r.QryOrder.InvestorID, _userId.c_str(), sizeof r.QryOrder.InvestorID);
 
     _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryTrade()
 {
-    auto r = new CtpClient::Request;
-    memset(r, 0, sizeof *r);
-    r->type = RequestType::QueryTrade;
-    strncpy(r->QryTrade.BrokerID, _brokerId.c_str(), sizeof r->QryTrade.BrokerID);
-    strncpy(r->QryTrade.InvestorID, _userId.c_str(), sizeof r->QryTrade.InvestorID);
+    CtpClient::Request r;
+    memset(&r, 0, sizeof r);
+    r.type = RequestType::QueryTrade;
+    strncpy(r.QryTrade.BrokerID, _brokerId.c_str(), sizeof r.QryTrade.BrokerID);
+    strncpy(r.QryTrade.InvestorID, _userId.c_str(), sizeof r.QryTrade.InvestorID);
 
     _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryTradingAccount()
 {
-    auto r = new CtpClient::Request;
-    memset(r, 0, sizeof *r);
-    r->type = RequestType::QueryTradingAccount;
-    strncpy(r->QryTradingAccount.BrokerID, _brokerId.c_str(), sizeof r->QryTradingAccount.BrokerID);
-    strncpy(r->QryTradingAccount.InvestorID, _userId.c_str(), sizeof r->QryTradingAccount.InvestorID);
-    strncpy(r->QryTradingAccount.CurrencyID, "CNY", sizeof r->QryTradingAccount.CurrencyID);
+    CtpClient::Request r;
+    memset(&r, 0, sizeof r);
+    r.type = RequestType::QueryTradingAccount;
+    strncpy(r.QryTradingAccount.BrokerID, _brokerId.c_str(), sizeof r.QryTradingAccount.BrokerID);
+    strncpy(r.QryTradingAccount.InvestorID, _userId.c_str(), sizeof r.QryTradingAccount.InvestorID);
+    strncpy(r.QryTradingAccount.CurrencyID, "CNY", sizeof r.QryTradingAccount.CurrencyID);
 
     _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryInvestorPosition()
 {
-    auto r = new CtpClient::Request;
-    memset(r, 0, sizeof *r);
-    r->type = RequestType::QueryInvestorPosition;
-    strncpy(r->QryInvestorPosition.BrokerID, _brokerId.c_str(), sizeof r->QryInvestorPosition.BrokerID);
-    strncpy(r->QryInvestorPosition.InvestorID, _userId.c_str(), sizeof r->QryInvestorPosition.InvestorID);
+    CtpClient::Request r;
+    memset(&r, 0, sizeof r);
+    r.type = RequestType::QueryInvestorPosition;
+    strncpy(r.QryInvestorPosition.BrokerID, _brokerId.c_str(), sizeof r.QryInvestorPosition.BrokerID);
+    strncpy(r.QryInvestorPosition.InvestorID, _userId.c_str(), sizeof r.QryInvestorPosition.InvestorID);
     // 不填写合约则返回所有持仓
-    strncpy(r->QryInvestorPosition.InstrumentID, "", sizeof r->QryInvestorPosition.InstrumentID);
+    // strncpy(r.QryInvestorPosition.InstrumentID, "", sizeof r.QryInvestorPosition.InstrumentID);
 
     _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryInvestorPositionDetail()
 {
-    auto r = new CtpClient::Request;
-    memset(r, 0, sizeof *r);
-    r->type = RequestType::QueryInvestorPositionDetail;
-    strncpy(r->QryInvestorPositionDetail.BrokerID, _brokerId.c_str(), sizeof r->QryInvestorPositionDetail.BrokerID);
-    strncpy(r->QryInvestorPositionDetail.InvestorID, _userId.c_str(), sizeof r->QryInvestorPositionDetail.InvestorID);
+    CtpClient::Request r;
+    memset(&r, 0, sizeof r);
+    r.type = RequestType::QueryInvestorPositionDetail;
+    strncpy(r.QryInvestorPositionDetail.BrokerID, _brokerId.c_str(), sizeof r.QryInvestorPositionDetail.BrokerID);
+    strncpy(r.QryInvestorPositionDetail.InvestorID, _userId.c_str(), sizeof r.QryInvestorPositionDetail.InvestorID);
     // 不填写合约则返回所有持仓
-    strncpy(r->QryInvestorPositionDetail.InstrumentID, "", sizeof r->QryInvestorPositionDetail.InstrumentID);
+    // strncpy(r.QryInvestorPositionDetail.InstrumentID, "", sizeof r.QryInvestorPositionDetail.InstrumentID);
 
     _requestQueue.enqueue(r);
 }
 
 void CtpClient::QueryMarketData(std::string instrumentId, int nRequestID)
 {
-    auto r = new CtpClient::Request;
-    memset(r, 0, sizeof *r);
-    r->type = RequestType::QueryMarketData;
-    strncpy(r->QryDepthMarketData.InstrumentID, instrumentId.c_str(), sizeof r->QryDepthMarketData.InstrumentID);
-    r->nRequestID = nRequestID;
+    CtpClient::Request r;
+    memset(&r, 0, sizeof r);
+    r.type = RequestType::QueryMarketData;
+    strncpy(r.QryDepthMarketData.InstrumentID, instrumentId.c_str(), sizeof r.QryDepthMarketData.InstrumentID);
+    r.nRequestID = nRequestID;
 
     _requestQueue.enqueue(r);
 }
 
-void CtpClient::InsertOrder(
-    std::string instrumentId,
-    Direction direction,
-    OffsetFlag offsetFlag,
-    TThostFtdcPriceType limitPrice,
-    TThostFtdcVolumeType volume,
-    int requestId,
-    boost::python::dict extraOptions)
+void CtpClient::InsertOrder(const std::string &instrumentId, Direction direction, OffsetFlag offsetFlag, TThostFtdcPriceType limitPrice, TThostFtdcVolumeType volume, py::kwargs kwargs)
 {
     CThostFtdcInputOrderField req;
     memset(&req, 0, sizeof req);
     strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
     strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+
     strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
     req.VolumeTotalOriginal = volume;
     req.LimitPrice = limitPrice;
@@ -630,229 +612,53 @@ void CtpClient::InsertOrder(
     req.ContingentCondition = THOST_FTDC_CC_Immediately;
     req.MinVolume = 1;
     req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
-    req.RequestID = requestId;
+    req.RequestID = 0;
 
-    switch(direction) {
-        case D_Buy:
-            req.Direction = THOST_FTDC_D_Buy;
-            break;
-        case D_Sell:
-            req.Direction = THOST_FTDC_D_Sell;
-            break;
-        default:
-            throw std::invalid_argument("direction");
+    req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
+    req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
+    req.TimeCondition = THOST_FTDC_TC_GFD;
+    req.VolumeCondition = THOST_FTDC_VC_AV;
+    req.ContingentCondition = THOST_FTDC_CC_Immediately;
+    req.MinVolume = 1;
+    req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
+    req.RequestID = 0;
+
+    req.Direction = (TThostFtdcDirectionType)direction;
+    req.CombOffsetFlag[0] = (TThostFtdcOffsetFlagType)offsetFlag;
+
+    if (kwargs.contains("order_price_type")) {
+        req.OrderPriceType = (TThostFtdcOrderPriceTypeType)kwargs["order_price_type"].cast<OrderPriceType>();
     }
 
-    switch (offsetFlag) {
-        case OF_Open:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_Open;
-            break;
-        case OF_Close:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_Close;
-            break;
-        case OF_ForceClose:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceClose;
-            break;
-        case OF_CloseToday:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseToday;
-            break;
-        case OF_CloseYesterday:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseYesterday;
-            break;
-        case OF_ForceOff:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceOff;
-            break;
-        case OF_LocalForceClose:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_LocalForceClose;
-            break;
-        default:
-            throw std::invalid_argument("offset_flag");
+    if (kwargs.contains("hedge_flag")) {
+        req.CombHedgeFlag[0] = (TThostFtdcHedgeFlagType)kwargs["hedge_flag"].cast<HedgeFlag>();
     }
 
-    if (extraOptions.has_key("order_price_type")) {
-        OrderPriceType opt = extract<OrderPriceType>(extraOptions["order_price_type"]);
-        switch (opt) {
-        case OPT_AnyPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_AnyPrice;
-            break;
-        case OPT_LimitPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
-            break;
-        case OPT_BestPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_BestPrice;
-            break;
-        case OPT_LastPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPrice;
-            break;
-        case OPT_LastPricePlusOneTick:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusOneTicks;
-            break;
-        case OPT_LastPricePlusTwoTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusTwoTicks;
-            break;
-        case OPT_LastPricePlusThreeTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusThreeTicks;
-            break;
-        case OPT_AskPrice1:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1;
-            break;
-        case OPT_AskPrice1PlusOneTick:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusOneTicks;
-            break;
-        case OPT_AskPrice1PlusTwoTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusTwoTicks;
-            break;
-        case OPT_AskPrice1PlusThreeTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusThreeTicks;
-            break;
-        case OPT_BidPrice1:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1;
-            break;
-        case OPT_BidPrice1PlusOneTick:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusOneTicks;
-            break;
-        case OPT_BidPrice1PlusTwoTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusTwoTicks;
-            break;
-        case OPT_BidPrice1PlusThreeTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusThreeTicks;
-            break;
-        case OPT_FiveLevelPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_FiveLevelPrice;
-            break;
-        default:
-            throw std::invalid_argument("order_price_type");
-        }
+    if (kwargs.contains("time_condition")) {
+        req.TimeCondition = (TThostFtdcTimeConditionType)kwargs["time_conditino"].cast<TimeCondition>();
     }
 
-    if (extraOptions.has_key("hedge_flag")) {
-        HedgeFlag hf = extract<HedgeFlag>(extraOptions["hedge_flag"]);
-        switch (hf) {
-        case HF_Speculation:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
-            break;
-        case HF_Arbitrage:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_Arbitrage;
-            break;
-        case HF_Hedge:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_Hedge;
-            break;
-        case HF_MarketMaker:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_MarketMaker;
-            break;
-        default:
-            throw std::invalid_argument("hedge_flag");
-        }
+    if (kwargs.contains("volume_condition")) {
+        req.VolumeCondition = (TThostFtdcVolumeConditionType)kwargs["volume_condition"].cast<VolumeCondition>();
     }
 
-    if (extraOptions.has_key("time_condition")) {
-        TimeCondition tc = extract<TimeCondition>(extraOptions["time_conditino"]);
-        switch (tc) {
-        case TC_IOC:
-            req.TimeCondition = THOST_FTDC_TC_IOC;
-            break;
-        case TC_GFS:
-            req.TimeCondition = THOST_FTDC_TC_GFS;
-            break;
-        case TC_GFD:
-            req.TimeCondition = THOST_FTDC_TC_GFD;
-            break;
-        case TC_GTD:
-            req.TimeCondition = THOST_FTDC_TC_GTD;
-            break;
-        case TC_GTC:
-            req.TimeCondition = THOST_FTDC_TC_GTC;
-            break;
-        case TC_GFA:
-            req.TimeCondition = THOST_FTDC_TC_GFA;
-            break;
-        default:
-            throw std::invalid_argument("time_condition");
-        }
+    if (kwargs.contains("contingent_condition")) {
+        req.ContingentCondition = (TThostFtdcContingentConditionType)kwargs["contingent_condition"].cast<ContingentCondition>();
     }
 
-    if (extraOptions.has_key("volume_condition")) {
-        VolumeCondition vc = extract<VolumeCondition>(extraOptions["volume_condition"]);
-        switch (vc) {
-        case VC_AV:
-            req.VolumeCondition = THOST_FTDC_VC_AV;
-            break;
-        case VC_MV:
-            req.VolumeCondition = THOST_FTDC_VC_MV;
-            break;
-        case VC_CV:
-            req.VolumeCondition = THOST_FTDC_VC_CV;
-            break;
-        default:
-            throw std::invalid_argument("volume_condition");
-        }
+    if (kwargs.contains("min_volume")) {
+        req.MinVolume = kwargs["min_volume"].cast<int>();
     }
 
-    if (extraOptions.has_key("contingent_condition")) {
-        ContingentCondition cc = extract<ContingentCondition>(extraOptions["contingent_condition"]);
-        switch (cc) {
-        case CC_Immediately:
-            req.ContingentCondition = THOST_FTDC_CC_Immediately;
-            break;
-        case CC_Touch:
-            req.ContingentCondition = THOST_FTDC_CC_Touch;
-            break;
-        case CC_TouchProfit:
-            req.ContingentCondition = THOST_FTDC_CC_TouchProfit;
-            break;
-        case CC_ParkedOrder:
-            req.ContingentCondition = THOST_FTDC_CC_ParkedOrder;
-            break;
-        case CC_LastPriceGreaterThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterThanStopPrice;
-            break;
-        case CC_LastPriceGreaterEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterEqualStopPrice;
-            break;
-        case CC_LastPriceLesserThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserThanStopPrice;
-            break;
-        case CC_LastPriceLesserEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserEqualStopPrice;
-            break;
-        case CC_AskPriceGreaterThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterThanStopPrice;
-            break;
-        case CC_AskPriceGreaterEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterEqualStopPrice;
-            break;
-        case CC_AskPriceLesserThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserThanStopPrice;
-            break;
-        case CC_AskPriceLesserEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserEqualStopPrice;
-            break;
-        case CC_BidPriceGreaterThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterThanStopPrice;
-            break;
-        case CC_BidPriceGreaterEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterEqualStopPrice;
-            break;
-        case CC_BidPriceLesserThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserThanStopPrice;
-            break;
-        case CC_BidPriceLesserEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserEqualStopPrice;
-            break;
-        default:
-            throw std::invalid_argument("contingent_condition");
-        }
+    if (kwargs.contains("request_id")) {
+        req.RequestID = kwargs["request_id"].cast<int>();
     }
 
-    if (extraOptions.has_key("min_volume")) {
-        req.MinVolume = extract<int>(extraOptions["min_volume"]);
-    }
-
-    assert_request(_tdApi->ReqOrderInsert(&req, requestId));
+    assert_request(_tdApi->ReqOrderInsert(&req, req.RequestID));
 }
 
 void CtpClient::OrderAction(
-    boost::shared_ptr<CThostFtdcOrderField> pOrder,
+    std::shared_ptr<CThostFtdcOrderField> pOrder,
     OrderActionFlag actionFlag,
     TThostFtdcPriceType limitPrice,
     TThostFtdcVolumeType volumeChange,
@@ -869,35 +675,16 @@ void CtpClient::OrderAction(
     strncpy(req.InstrumentID, pOrder->InstrumentID, sizeof req.InstrumentID);
     req.FrontID = pOrder->FrontID;
     req.SessionID = pOrder->SessionID;
-
-    switch (actionFlag) {
-        case AF_Delete:
-            req.ActionFlag = THOST_FTDC_AF_Delete;
-            break;
-        case AF_Modify:
-            req.ActionFlag = THOST_FTDC_AF_Modify;
-            break;
-        default:
-            throw std::invalid_argument("action_flag");
-    }
+    req.ActionFlag = (TThostFtdcActionFlagType)actionFlag;
     req.LimitPrice = limitPrice;
     req.VolumeChange = volumeChange;
 
     assert_request(_tdApi->ReqOrderAction(&req, requestId));
 }
 
-void CtpClient::DeleteOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder, int requestId)
+void CtpClient::DeleteOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, int requestId)
 {
-    OrderAction(pOrder, AF_Delete, 0.0, 0, requestId);
-}
-
-void CtpClient::ModifyOrder(
-    boost::shared_ptr<CThostFtdcOrderField> pOrder,
-    TThostFtdcPriceType limitPrice,
-    TThostFtdcVolumeType volumeChange,
-    int requestId)
-{
-    OrderAction(pOrder, AF_Modify, limitPrice, volumeChange, requestId);
+    OrderAction(pOrder, OrderActionFlag::AF_Delete, 0.0, 0, requestId);
 }
 
 #pragma endregion // Trader API
@@ -907,136 +694,206 @@ void CtpClient::ModifyOrder(
 
 void CtpClientWrap::OnTdFrontConnected()
 {
-    std::cerr << "Trader Front Connected" << std::endl;
-
-    if (override fn = get_override("on_td_front_connected")) {
-        fn();
-    } else {
-        TdLogin();
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_td_front_connected",
+        OnTdFrontConnected
+    );
 }
 
 void CtpClientWrap::OnTdFrontDisconnected(int nReason)
 {
-    if (override fn = get_override("on_md_front_disconnected")) {
-        fn(nReason);
-    } else {
-        std::cerr << "Trader Front Disconnected with reason = " << nReason << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_td_front_disconnected",
+        OnTdFrontDisconnected,
+        nReason
+    );
 }
 
-void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_td_user_login")) {
-        fn(pRspUserLogin, pRspInfo);
-    } else {
-        std::cerr << "Trader User Login" << std::endl;
-        ConfirmSettlementInfo();
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_td_user_login",
+        OnTdUserLogin,
+        RspUserLogin,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_td_user_logout")) {
-        fn(pUserLogout, pRspInfo);
-    } else {
-        std::cerr << "Trader User Logout" << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_td_user_logout",
+        OnTdUserLogout,
+        UserLogout,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField &SettlementInfoConfirm, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_settlement_info_confirm")) {
-        fn(pSettlementInfoConfirm, pRspInfo);
-    } else {
-        std::cerr << "SettlementInfoConfirm: " << pRspInfo->ErrorID << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_settlement_info_confirm",
+        OnRspSettlementInfoConfirm,
+        SettlementInfoConfirm,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_err_order_insert")) {
-        fn(pInputOrder, pRspInfo);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_err_order_insert",
+        OnErrOrderInsert,
+        InputOrder,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField &InputOrderAction, const CThostFtdcOrderActionField &OrderAction, const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_err_order_action")) {
-        fn(pInputOrderAction, pOrderAction, pRspInfo);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_err_order_action",
+        OnErrOrderAction,
+        InputOrderAction,
+        OrderAction,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnRtnOrder(boost::shared_ptr<CThostFtdcOrderField> pOrder)
+void CtpClientWrap::OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder)
 {
-    if (override fn = get_override("on_rtn_order")) {
-        fn(pOrder);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_rtn_order",
+        OnRtnOrder,
+        pOrder
+    );
 }
 
-void CtpClientWrap::OnRtnTrade(CThostFtdcTradeField *pTrade)
+void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField &Trade)
 {
-    if (override fn = get_override("on_rtn_trade")) {
-        fn(pTrade);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_rtn_trade",
+        OnRtnTrade,
+        Trade
+    );
 }
 
-void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField &RspInfo)
 {
-    if (override fn = get_override("on_td_error")) {
-        fn(pRspInfo);
-    } else {
-        std::cerr << "Trader Error: " << pRspInfo->ErrorID << std::endl;
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_td_error",
+        OnTdError,
+        RspInfo
+    );
 }
 
-void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_rsp_order")) {
-        fn(pOrder, pRspInfo, bIsLast);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_rsp_order",
+        OnRspQryOrder,
+        pOrder,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_rsp_trade")) {
-        fn(pTrade, pRspInfo, bIsLast);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_rsp_trade",
+        OnRspQryTrade,
+        Trade,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField &TradingAccount, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_rsp_trading_account")) {
-        fn(pTradingAccount, pRspInfo, bIsLast);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_rsp_trading_account",
+        OnRspQryTradingAccount,
+        TradingAccount,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField &InvestorPosition, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_rsp_investor_position")) {
-        fn(pInvestorPosition, pRspInfo, bIsLast);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_rsp_investor_position",
+        OnRspQryInvestorPosition,
+        InvestorPosition,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField &InvestorPositionDetail, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
-    if (override fn = get_override("on_rsp_investor_position_detail")) {
-        fn(pInvestorPositionDetail, pRspInfo, bIsLast);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_rsp_investor_position_detail",
+        OnRspQryInvestorPositionDetail,
+        InvestorPositionDetail,
+        RspInfo,
+        bIsLast
+    );
 }
 
-void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField &DepthMarketData, const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast)
 {
-    if (override fn = get_override("on_rsp_market_data")) {
-        fn(pDepthMarketData, pRspInfo, nRequestID, bIsLast);
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_rsp_market_data",
+        OnRspQryDepthMarketData,
+        DepthMarketData,
+        RspInfo,
+        nRequestID,
+        bIsLast
+    );
 }
 
 #pragma endregion // Trader SPI
 
 void CtpClientWrap::OnIdle()
 {
-    if (override fn = get_override("on_idle")) {
-        fn();
-    }
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_idle",
+        OnIdle
+    );
 }

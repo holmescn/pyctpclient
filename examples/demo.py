@@ -1,59 +1,206 @@
 # -*- coding: utf-8 -*-
-from pyctpclient import CtpClient, Direction, OffsetFlag
+from pyctpclient import CtpClient
+from pyctpclient import (
+    D_BUY, D_SELL, OF_OPEN, OF_CLOSE, OF_CLOSE_TODAY, OF_CLOSE_YESTERDAY,
 
-BUY = Direction.BUY
-SELL = Direction.SELL
-OPEN = OffsetFlag.OPEN
-CLOSE = OffsetFlag.CLOSE
+    OST_ALL_TRADED,
+    OST_PART_TRADED_QUEUEING,
+    OST_PART_TRADED_NOT_QUEUEING,
+    OST_NO_TRADE_QUEUEING,
+    OST_NO_TRADE_NOT_QUEUEING,
+    OST_CANCELED,
+    OST_UNKNOWN,
+
+    OSS_INSERT_SUBMITTED,
+    OSS_CANCEL_SUBMITTED,
+    OSS_ACCEPTED,
+    OSS_INSERT_REJECTED,
+    OSS_CANCEL_REJECTED
+)
 
 
 class Client(CtpClient):
-    def on_idle(self):
-        print("idle")
 
-    def on_tick(self, bar):
-        print(bar.instrument_id, bar.price, bar.volume)
+    def init(self):
+        """初始化 CTP API/SPI，切记不要忘了调用 `super` 的 `init`。
+        """
+        super(Client, self).init()
+        # 完成自己的初始化工作
 
-    def on_1min(self, bar):
-        print("1min", bar.instrument_id, bar.close, bar.volume, bar.turnover)
+    def on_md_front_disconnected(self, reason):
+        """MarketData 前置断开连接时会调用此函数。断开后，系统会尝试重新连接。
+        
+        :param nReason: 
+	        0x1001 网络读失败(4097)
+	        0x1002 网络写失败(4098)
+	        0x2001 接收心跳超时(8193)
+	        0x2002 发送心跳失败(8194)
+	        0x2003 收到错误报文(8195)
+        """
+        pass
 
-    def on_1min_tick(self, bar):
-        print("1min tick", bar.instrument_id, bar.close, bar.volume, bar.turnover)
+    def on_rtn_market_data(self, data):
+        """MarketData 数据回传函数，包含完全的原始数据信息，
 
-    def on_settlement_info_confirm(self, settlement_info_confirm, rsp_info):
+        :type data: pyctpclient.ctpclient.MarketData
+        """
+        pass
+
+    def on_tick(self, data):
+        """MarketData 数据回传函数，这个是简化后的回传数据，去除了不常用的一些数据。
+
+        :type data: pyctpclient.ctpclient.TickBar
+        """
+        # 报单
+        self.insert_order(data.instrument_id, D_BUY, OF_OPEN, data.price + 1, 1, request_id=10)
+
+    def on_1min(self, data):
+        """MarketData 数据回传函数，由 tick 数据合成的 1 分钟数据，在下一个一分钟开始的时候，传回上一个
+        一分钟的数据。
+
+        :type data: pyctpclient.ctpclient.M1Bar
+        """
+        pass
+
+    def on_1min_tick(self, data):
+        """MarketData 数据回传函数，在每一个 tick 都会得到当前 1 分钟数据。
+
+        :type data: pyctpclient.ctpclient.M1Bar
+        """
+        pass
+
+    def on_td_front_disconnected(self, reason):
+        """Trader 前置断开连接时会调用此函数。断开后，系统会尝试重新连接。reason 和 MarketData 的相同。
+        """
+        pass
+
+    def on_settlement_info_confirm(self, confirm, rsp_info):
+        """Trader 每次登录后回确认上一个交易日的交割单，确认完成后回调用此函数。通常用来执行开机的初始化查询。
+
+        :type confirm: pyctpclient.ctpclient.SettlementInfoConfirm
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        # 目前主要有以下几个查询函数
+        # 查询当前的账户资金情况
         self.query_trading_account()
+        # 查询当前的账户持仓情况
         self.query_investor_position()
+        # 查询当前的账户持仓明细
+        self.query_investor_position_detail()
+        # 查询本交易日内所有的报单记录
+        self.query_order()
+        # 查询本交易日内所有的成交记录
+        self.query_trade()
+
+        # 这个函数一般不会在交易的时候使用
+        # 查询制定合约的市场信息
+        self.query_market_data("IF1905")
 
     def on_rsp_trading_account(self, trading_account, rsp_info, is_last):
-        print("trading_account")
+        """`query_trading_account` 的数据回传函数。请不要保存 `trading_account`，只能保存其中的数据。
+
+        :type trading_account: pyctpclient.ctpclient.TradingAccount
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
 
     def on_rsp_investor_position(self, investor_position, rsp_info, is_last):
-        print("investor_position")
-        if investor_position is None:
-            print("No position")
+        """`query_investor_position` 的数据回传函数。请不要保存 `investor_position`，只能保存其中的数据。
+
+        :type investor_position: pyctpclient.ctpclient.InvestorPosition
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
+
+    def on_rsp_investor_position_detail(self, investor_position_detail, rsp_info, is_last):
+        """`query_investor_position_detail` 的数据回传函数。请不要保存 `investor_position_detail`，只能保存其中的数据。
+
+        :type investor_position_detail: pyctpclient.ctpclient.InvestorPositionDetail
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
+
+    def on_rsp_order(self, order, rsp_info, is_last):
+        """`query_order` 的数据回传函数。
+
+        :type order: pyctpclient.ctpclient.Order
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
+
+    def on_rsp_trade(self, trade, rsp_info, is_last):
+        """`query_trade` 的数据回传函数。请不要保存 `trade`，只能保存其中的数据。
+
+        :type trade: pyctpclient.ctpclient.Trade
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
+
+    def on_rsp_market_data(self, data, rsp_info, request_id, is_last):
+        """`query_market_data` 的数据回传函数。请不要保存 `data`，只能保存其中的数据。
+
+        :type data: pyctpclient.ctpclient.MarketData
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
 
     def on_rtn_order(self, order):
-        print(order.submit_status, order.status)
+        """报单状态回传函数。当报单状态 `order.status` 或者 `order.submit_status` 变化时，
+
+        :type order: pyctpclient.ctpclient.Order
+        """
+        pass
 
     def on_rtn_trade(self, trade):
-        print("trade")
+        """报单成交回传函数。
+
+        :type trade: pyctpclient.ctpclient.Trade
+        """
+        pass
 
     def on_err_order_insert(self, input_order, rsp_info):
-        print("error insert order")
+        """报单失败回传函数。这里主要是通过检查 `rsp_info.error_id` 的值来确定错误原因。
+
+        :type input_order: pyctpclient.ctpclient.InputOrder
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
 
     def on_err_order_action(self, input_order_action, order_action, rsp_info):
-        print("error order action")
+        """撤单/改单失败回传函数。这里主要是通过检查 `rsp_info.error_id` 的值来确定错误原因。
 
-    def on_md_error(self, rsp_info):
-        print("market data error")
+        :type input_order_action: pyctpclient.ctpclient.InputOrderAction
+        :type order_action: pyctpclient.ctpclient.OrderAction
+        :type rsp_info: pyctpclient.ctpclient.ResponseInfo
+        """
+        pass
 
-    def on_td_error(self, rsp_info):
-        print("trader error")
+    def on_idle(self):
+        """空闲回传函数。当数据队列中没有数据需要处理，并且延迟大于 `idle_delay` 时调用
+        """
+        pass
 
 
 if __name__ == "__main__":
-    # c = Client("tcp://180.168.146.187:10011", "tcp://180.168.146.187:10001", "9999", "", "")
-    c = Client("tcp://180.168.146.187:10031", "tcp://180.168.146.187:10030", "9999", "", "")
+    # 快期 第一套服务器，用于实盘模拟交易
+    # md_address: tcp://180.168.146.187:10011
+    # td_address: tcp://180.168.146.187:10001
+    # 快期 第二套服务器，用于 API 测试，仅在收盘后可用，具体查看 simnow 产品文档
+    # md_address: tcp://180.168.146.187:10031
+    # td_address: tcp://180.168.146.187:10030
+    # 创建 CTP Client 实例
+    c = Client(
+        md_address="tcp://180.168.146.187:10031",
+        td_address="tcp://180.168.146.187:10030",
+        broker_id="9999",
+        user_id="",
+        password=""
+    )
+    # 订阅要交易的品种, 请在初始化之前指定
     c.instrument_ids = ['IF1905', 'rb1910']
+    # 设置 on_idle 的最小间隔（毫秒），默认为 1 秒
+    c.idle_delay = 1000
+    # 初始化 CTP
     c.init()
+    # 进入消息循环（必须执行）
     c.join()

@@ -20,6 +20,9 @@ from pyctpclient import (
 
 
 class Client(CtpClient):
+    tick = None
+    m1 = None
+    m1_tick = None
 
     def init(self):
         """初始化 CTP API/SPI，切记不要忘了调用 `super` 的 `init`。
@@ -29,8 +32,8 @@ class Client(CtpClient):
 
     def on_md_front_disconnected(self, reason):
         """MarketData 前置断开连接时会调用此函数。断开后，系统会尝试重新连接。
-        
-        :param nReason: 
+
+        :param nReason:
 	        0x1001 网络读失败(4097)
 	        0x1002 网络写失败(4098)
 	        0x2001 接收心跳超时(8193)
@@ -44,50 +47,7 @@ class Client(CtpClient):
 
         :type data: pyctpclient.ctpclient.MarketData
         """
-        print(data.trading_day)
-        print(data.instrument_id)
-        print(data.exchange_id)
-        print(data.exchange_inst_id)
-        print(data.last_price)
-        print(data.pre_settlement_price)
-        print(data.pre_close_price)
-        print(data.pre_open_interest)
-        print(data.open_price)
-        print(data.highest_price)
-        print(data.lowest_price)
-        print(data.volume)
-        print(data.turnover)
-        print(data.open_interest)
-        print(data.close_price)
-        print(data.settlement_price)
-        print(data.upper_limit_price)
-        print(data.lower_limit_price)
-        print(data.pre_delta)
-        print(data.curr_delta)
-        print(data.update_time)
-        print(data.update_millisec)
-        print(data.bid_price1)
-        print(data.bid_volume1)
-        print(data.ask_price1)
-        print(data.ask_volume1)
-        print(data.bid_price2)
-        print(data.bid_volume2)
-        print(data.ask_price2)
-        print(data.ask_volume2)
-        print(data.bid_price3)
-        print(data.bid_volume3)
-        print(data.ask_price3)
-        print(data.ask_volume3)
-        print(data.bid_price4)
-        print(data.bid_volume4)
-        print(data.ask_price4)
-        print(data.ask_volume4)
-        print(data.bid_price5)
-        print(data.bid_volume5)
-        print(data.ask_price5)
-        print(data.ask_volume5)
-        print(data.average_price)
-        print(data.action_day)
+        pass
 
     def on_tick(self, data):
         """MarketData 数据回传函数，这个是简化后的回传数据，去除了不常用的一些数据。
@@ -95,7 +55,8 @@ class Client(CtpClient):
         :type data: pyctpclient.ctpclient.TickBar
         """
         # 报单
-        self.insert_order(data.instrument_id, D_BUY, OF_OPEN, data.price + 1, 1, request_id=10)
+        # self.insert_order(data.instrument_id, D_BUY, OF_OPEN, data.price + 1, 1, request_id=10)
+        self.tick = data
 
     def on_1min(self, data):
         """MarketData 数据回传函数，由 tick 数据合成的 1 分钟数据，在下一个一分钟开始的时候，传回上一个
@@ -103,14 +64,14 @@ class Client(CtpClient):
 
         :type data: pyctpclient.ctpclient.M1Bar
         """
-        pass
+        self.m1 = data
 
     def on_1min_tick(self, data):
         """MarketData 数据回传函数，在每一个 tick 都会得到当前 1 分钟数据。
 
         :type data: pyctpclient.ctpclient.M1Bar
         """
-        pass
+        self.m1_tick = data
 
     def on_td_front_disconnected(self, reason):
         """Trader 前置断开连接时会调用此函数。断开后，系统会尝试重新连接。reason 和 MarketData 的相同。
@@ -138,6 +99,15 @@ class Client(CtpClient):
         # 这个函数一般不会在交易的时候使用
         # 查询制定合约的市场信息
         self.query_market_data("IF1905")
+
+        print("trading_day", data.trading_day)
+        print("settlement_id", data.settlement_id)
+        print("broker_id", data.broker_id)
+        print("investor_id", data.investor_id)
+        print("sequence_no", data.sequence_no)
+        print("content", data.content)
+        print("account_id", data.account_id)
+        print("currency_id", data.currency_id)
 
     def on_rsp_trading_account(self, trading_account, rsp_info, is_last):
         """`query_trading_account` 的数据回传函数。请不要保存 `trading_account`，只能保存其中的数据。
@@ -225,25 +195,31 @@ class Client(CtpClient):
 
 
 if __name__ == "__main__":
-    # 快期 第一套服务器，用于实盘模拟交易
-    # md_address: tcp://180.168.146.187:10011
-    # td_address: tcp://180.168.146.187:10001
-    # 快期 第二套服务器，用于 API 测试，仅在收盘后可用，具体查看 simnow 产品文档
-    # md_address: tcp://180.168.146.187:10031
-    # td_address: tcp://180.168.146.187:10030
     # 创建 CTP Client 实例
     c = Client(
+        # 实盘/电信1
+        #md_address="tcp://180.168.146.187:10010",
+        #td_address="tcp://180.168.146.187:10000",
+        # 实盘/电信2
         md_address="tcp://180.168.146.187:10011",
         td_address="tcp://180.168.146.187:10001",
+        # 实盘/移动
+        #md_address="tcp://218.202.237.33:10012",
+        #td_address="tcp://218.202.237.33:10002",
+        # 开发
+        #md_address="tcp://180.168.146.187:10031",
+        #td_address="tcp://180.168.146.187:10030",
         broker_id="9999",
         user_id="",
         password=""
     )
     # 订阅要交易的品种, 请在初始化之前指定
-    c.instrument_ids = ['IF1905', 'rb1910']
+    c.instrument_ids = ['rb1910']
     # 设置 on_idle 的最小间隔（毫秒），默认为 1 秒
     c.idle_delay = 1000
     # 初始化 CTP
     c.init()
     # 进入消息循环（必须执行）
     c.join()
+    # 善后工作
+    c.remove_flow_path()

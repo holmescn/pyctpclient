@@ -43,7 +43,7 @@ ctpclient_ext = Extension(
         os.path.abspath('./pybind11/include'),
     ],
     library_dirs=[
-        os.path.abspath('./src/pyctpclient/lib')
+        os.path.abspath('./src/pyctpclient')
     ],
     libraries=["thostmduserapi", "thosttraderapi"],
     extra_compile_args=extra_compile_args,

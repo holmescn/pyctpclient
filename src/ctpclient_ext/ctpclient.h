@@ -251,7 +251,7 @@ class CtpClient
         Response r;
         r.Init(type, pRspInfo, nRequestID, bIsLast);
         if (pRsp) {
-            memcpy(&r.base, pRsp, sizeof(T));
+            memcpy(&r.base, pRsp, sizeof *pRsp);
         }
 
         Enqueue(r);

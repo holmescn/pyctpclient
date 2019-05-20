@@ -17,6 +17,7 @@
 #include <csignal>
 #include <string>
 #include <future>
+#include <sstream>
 #include <iostream>
 #include "ThostFtdcMdApi.h"
 #include "ThostFtdcTraderApi.h"
@@ -39,21 +40,28 @@ void signal_handler(int signal)
 
 void _assertRequest(int rc, const char *request)
 {
-    switch (rc) {
-    case 0:
+    if (rc == 0) {
         // 发送成功
-        break;
-    case -1:
-        // 因网络原因发送失败
-        throw std::runtime_error("Network failed");
-    case -2:
-        // 未处理请求队列总数量超限
-        throw std::runtime_error("Request queue is full");
-    case -3:
-        // 每秒发送请求数量超限
-        throw std::runtime_error("Request too frequently");
-    default:
-        throw std::runtime_error("Unknown");
+    } else {
+        std::stringstream ss;
+        ss << request << " failed because of ";
+        switch (rc) {
+        case -1:
+            // 因网络原因发送失败
+            ss << "network error.";
+            throw std::runtime_error(ss.str());
+        case -2:
+            // 未处理请求队列总数量超限
+            ss << "excessing the limit of request queue.";
+            throw std::runtime_error(ss.str());
+        case -3:
+            // 每秒发送请求数量超限
+            ss << "too frequently request.";
+            throw std::runtime_error(ss.str());
+        default:
+            ss << "unknown reason: " << rc;
+            throw std::runtime_error(ss.str());
+        }
     }
 }
 
@@ -138,7 +146,7 @@ void CtpClient::Join()
 
         {
             auto duration = std::chrono::steady_clock::now() - timer;
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > 1s) {
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(duration) > _idleDelay * 1ms) {
                 OnIdle();
                 timer = std::chrono::steady_clock::now();
             }
@@ -203,28 +211,44 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
         OnMdUserLogin(r->RspUserLogin, r->RspInfo);
         break;
     case ResponseType::OnMdUserLogout:
-        OnMdUserLogout(&r->UserLogout, &r->RspInfo);
+        OnMdUserLogout(r->UserLogout, r->RspInfo);
         break;
     case ResponseType::OnSubMarketData:
-        OnSubscribeMarketData(&r->SpecificInstrument, &r->RspInfo);
+        OnSubscribeMarketData(r->SpecificInstrument, r->RspInfo, r->bIsLast);
         break;
     case ResponseType::OnUnSubMarketData:
-        OnUnsubscribeMarketData(&r->SpecificInstrument, &r->RspInfo);
+        OnUnsubscribeMarketData(r->SpecificInstrument, r->RspInfo, r->bIsLast);
         break;
     case ResponseType::OnRtnMarketData:
-        OnRtnMarketData(&r->DepthMarketData);
+    {
+        auto pDepthMarketData = std::make_shared<CThostFtdcDepthMarketDataField>();
+        memcpy(pDepthMarketData.get(), &r->DepthMarketData, sizeof r->DepthMarketData);
+        OnRtnMarketData(pDepthMarketData);
+    }
         break;
     case ResponseType::OnTick:
-        OnTick(&r->tick);
+    {
+        auto pTickBar = std::make_shared<TickBar>();
+        memcpy(pTickBar.get(), &r->tick, sizeof r->tick);
+        OnTick(pTickBar);
+    }
         break;
     case ResponseType::On1Min:
-        On1Min(&r->m1);
+    {
+        auto pM1Bar = std::make_shared<M1Bar>();
+        memcpy(pM1Bar.get(), &r->m1, sizeof r->m1);
+        On1Min(pM1Bar);
+    }
         break;
     case ResponseType::On1MinTick:
-        On1MinTick(&r->m1);
+    {
+        auto pM1Bar = std::make_shared<M1Bar>();
+        memcpy(pM1Bar.get(), &r->m1, sizeof r->m1);
+        On1MinTick(pM1Bar);
+    }
         break;
     case ResponseType::OnMdError:
-        OnMdError(&r->RspInfo);
+        OnMdError(r->RspInfo);
         break;
     case ResponseType::OnTdFrontConnected:
         OnTdFrontConnected();
@@ -233,61 +257,65 @@ void CtpClient::ProcessResponse(CtpClient::Response *r)
         OnTdFrontDisconnected(r->nReason);
         break;
     case ResponseType::OnTdUserLogin:
-        OnTdUserLogin(&r->RspUserLogin, &r->RspInfo);
+        OnTdUserLogin(r->RspUserLogin, r->RspInfo);
         break;
     case ResponseType::OnTdUserLogout:
-        OnTdUserLogout(&r->UserLogout, &r->RspInfo);
+        OnTdUserLogout(r->UserLogout, r->RspInfo);
         break;
     case ResponseType::OnSettlementInfoConfirm:
-        OnRspSettlementInfoConfirm(&r->SettlementInfoConfirm, &r->RspInfo);
+        OnRspSettlementInfoConfirm(r->SettlementInfoConfirm, r->RspInfo);
         break;
     case ResponseType::OnRspOrderInsert:
-        OnErrOrderInsert(&r->InputOrder, &r->RspInfo);
+        OnErrOrderInsert(r->InputOrder, r->RspInfo);
         break;
     case ResponseType::OnRspOrderAction:
-        OnErrOrderAction(&r->InputOrderAction, nullptr, &r->RspInfo);
+        OnErrOrderAction(r->InputOrderAction, r->OrderAction, r->RspInfo);
         break;
     case ResponseType::OnErrRtnOrderInsert:
-        OnErrOrderInsert(&r->InputOrder, &r->RspInfo);
+        OnErrOrderInsert(r->InputOrder, r->RspInfo);
         break;
     case ResponseType::OnErrRtnOrderAction:
-        OnErrOrderAction(nullptr, &r->OrderAction, &r->RspInfo);
+        OnErrOrderAction(r->InputOrderAction, r->OrderAction, r->RspInfo);
         break;
     case ResponseType::OnRtnOrder:
     {
-        auto pNewOrder = std::make_shared<CThostFtdcOrderField>();
-        memcpy(pNewOrder.get(), &r->Order, sizeof r->Order);
-        OnRtnOrder(pNewOrder);
+        auto pOrder = std::make_shared<CThostFtdcOrderField>();
+        memcpy(pOrder.get(), &r->Order, sizeof r->Order);
+        OnRtnOrder(pOrder);
     }
         break;
     case ResponseType::OnRtnTrade:
-        OnRtnTrade(&r->Trade);
+        OnRtnTrade(r->Trade);
         break;
     case ResponseType::OnTdError:
-        OnTdError(&r->RspInfo);
+        OnTdError(r->RspInfo);
         break;
     case ResponseType::OnRspQryOrder:
-        OnRspQryOrder(&r->Order, &r->RspInfo, r->bIsLast);
+    {
+        auto pOrder = std::make_shared<CThostFtdcOrderField>();
+        memcpy(pOrder.get(), &r->Order, sizeof r->Order);
+        OnRspQryOrder(pOrder, r->RspInfo, r->bIsLast);
+    }
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTrade:
-        OnRspQryTrade(&r->Trade, &r->RspInfo, r->bIsLast);
+        OnRspQryTrade(r->Trade, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTradingAccount:
-        OnRspQryTradingAccount(&r->TradingAccount, &r->RspInfo, r->bIsLast);
+        OnRspQryTradingAccount(r->TradingAccount, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPosition:
-        OnRspQryInvestorPosition(&r->InvestorPosition, &r->RspInfo, r->bIsLast);
+        OnRspQryInvestorPosition(r->InvestorPosition, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryDepthMarketData:
-        OnRspQryDepthMarketData(&r->DepthMarketData, &r->RspInfo, r->nRequestID, r->bIsLast);
+        OnRspQryDepthMarketData(r->DepthMarketData, r->RspInfo, r->nRequestID, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPositionDetail:
-        OnRspQryInvestorPositionDetail(&r->InvestorPositionDetail, &r->RspInfo, r->bIsLast);
+        OnRspQryInvestorPositionDetail(r->InvestorPositionDetail, r->RspInfo, r->bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     default:
@@ -376,43 +404,45 @@ void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogi
     );
 }
 
-void CtpClientWrap::OnMdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_md_user_logout",
         OnMdUserLogout,
-        pUserLogout,
-        pRspInfo
+        UserLogout,
+        RspInfo
     );
 }
 
-void CtpClientWrap::OnSubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_subscribe_market_data",
         OnSubscribeMarketData,
-        pSpecificInstrument,
-        pRspInfo
+        SpecificInstrument,
+        RspInfo,
+        bIsLast
     );
 }
 
-void CtpClientWrap::OnUnsubscribeMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_unsubscribe_market_data",
         OnUnsubscribeMarketData,
-        pSpecificInstrument,
-        pRspInfo
+        SpecificInstrument,
+        RspInfo,
+        bIsLast
     );
 }
 
-void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
+void CtpClientWrap::OnRtnMarketData(std::shared_ptr<CThostFtdcDepthMarketDataField> pDepthMarketData)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
@@ -423,47 +453,47 @@ void CtpClientWrap::OnRtnMarketData(CThostFtdcDepthMarketDataField *pDepthMarket
     );
 }
 
-void CtpClientWrap::OnTick(TickBar *bar)
+void CtpClientWrap::OnTick(std::shared_ptr<TickBar> pBar)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_tick",
         OnTick,
-        bar
+        pBar
     );
 }
 
-void CtpClientWrap::On1Min(M1Bar *bar)
+void CtpClientWrap::On1Min(std::shared_ptr<M1Bar> pBar)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_1min",
         On1Min,
-        bar
+        pBar
     );
 }
 
-void CtpClientWrap::On1MinTick(M1Bar *bar)
+void CtpClientWrap::On1MinTick(std::shared_ptr<M1Bar> pBar)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_1min_tick",
         On1MinTick,
-        bar
+        pBar
     );
 }
 
-void CtpClientWrap::OnMdError(CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_md_error",
         OnMdError,
-        pRspInfo
+        RspInfo
     );
 }
 
@@ -585,216 +615,27 @@ void CtpClient::InsertOrder(const std::string &instrumentId, Direction direction
     req.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
     req.RequestID = 0;
 
-    switch(direction) {
-        case D_Buy:
-            req.Direction = THOST_FTDC_D_Buy;
-            break;
-        case D_Sell:
-            req.Direction = THOST_FTDC_D_Sell;
-            break;
-        default:
-            throw std::invalid_argument("direction");
-    }
-
-    switch (offsetFlag) {
-        case OF_Open:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_Open;
-            break;
-        case OF_Close:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_Close;
-            break;
-        case OF_ForceClose:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceClose;
-            break;
-        case OF_CloseToday:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseToday;
-            break;
-        case OF_CloseYesterday:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_CloseYesterday;
-            break;
-        case OF_ForceOff:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_ForceOff;
-            break;
-        case OF_LocalForceClose:
-            req.CombOffsetFlag[0] = THOST_FTDC_OF_LocalForceClose;
-            break;
-        default:
-            throw std::invalid_argument("offset_flag");
-    }
+    req.Direction = (TThostFtdcDirectionType)direction;
+    req.CombOffsetFlag[0] = (TThostFtdcOffsetFlagType)offsetFlag;
 
     if (kwargs.contains("order_price_type")) {
-        OrderPriceType opt = kwargs["order_price_type"].cast<OrderPriceType>();
-        switch (opt) {
-        case OPT_AnyPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_AnyPrice;
-            break;
-        case OPT_LimitPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_LimitPrice;
-            break;
-        case OPT_BestPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_BestPrice;
-            break;
-        case OPT_LastPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPrice;
-            break;
-        case OPT_LastPricePlusOneTick:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusOneTicks;
-            break;
-        case OPT_LastPricePlusTwoTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusTwoTicks;
-            break;
-        case OPT_LastPricePlusThreeTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_LastPricePlusThreeTicks;
-            break;
-        case OPT_AskPrice1:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1;
-            break;
-        case OPT_AskPrice1PlusOneTick:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusOneTicks;
-            break;
-        case OPT_AskPrice1PlusTwoTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusTwoTicks;
-            break;
-        case OPT_AskPrice1PlusThreeTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_AskPrice1PlusThreeTicks;
-            break;
-        case OPT_BidPrice1:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1;
-            break;
-        case OPT_BidPrice1PlusOneTick:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusOneTicks;
-            break;
-        case OPT_BidPrice1PlusTwoTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusTwoTicks;
-            break;
-        case OPT_BidPrice1PlusThreeTicks:
-            req.OrderPriceType = THOST_FTDC_OPT_BidPrice1PlusThreeTicks;
-            break;
-        case OPT_FiveLevelPrice:
-            req.OrderPriceType = THOST_FTDC_OPT_FiveLevelPrice;
-            break;
-        default:
-            throw std::invalid_argument("order_price_type");
-        }
+        req.OrderPriceType = (TThostFtdcOrderPriceTypeType)kwargs["order_price_type"].cast<OrderPriceType>();
     }
 
     if (kwargs.contains("hedge_flag")) {
-        HedgeFlag hf = kwargs["hedge_flag"].cast<HedgeFlag>();
-        switch (hf) {
-        case HF_Speculation:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_Speculation;
-            break;
-        case HF_Arbitrage:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_Arbitrage;
-            break;
-        case HF_Hedge:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_Hedge;
-            break;
-        case HF_MarketMaker:
-            req.CombHedgeFlag[0] = THOST_FTDC_HF_MarketMaker;
-            break;
-        default:
-            throw std::invalid_argument("hedge_flag");
-        }
+        req.CombHedgeFlag[0] = (TThostFtdcHedgeFlagType)kwargs["hedge_flag"].cast<HedgeFlag>();
     }
 
     if (kwargs.contains("time_condition")) {
-        TimeCondition tc = kwargs["time_conditino"].cast<TimeCondition>();
-        switch (tc) {
-        case TC_IOC:
-            req.TimeCondition = THOST_FTDC_TC_IOC;
-            break;
-        case TC_GFS:
-            req.TimeCondition = THOST_FTDC_TC_GFS;
-            break;
-        case TC_GFD:
-            req.TimeCondition = THOST_FTDC_TC_GFD;
-            break;
-        case TC_GTD:
-            req.TimeCondition = THOST_FTDC_TC_GTD;
-            break;
-        case TC_GTC:
-            req.TimeCondition = THOST_FTDC_TC_GTC;
-            break;
-        case TC_GFA:
-            req.TimeCondition = THOST_FTDC_TC_GFA;
-            break;
-        default:
-            throw std::invalid_argument("time_condition");
-        }
+        req.TimeCondition = (TThostFtdcTimeConditionType)kwargs["time_conditino"].cast<TimeCondition>();
     }
 
     if (kwargs.contains("volume_condition")) {
-        VolumeCondition vc = kwargs["volume_condition"].cast<VolumeCondition>();
-        switch (vc) {
-        case VC_AV:
-            req.VolumeCondition = THOST_FTDC_VC_AV;
-            break;
-        case VC_MV:
-            req.VolumeCondition = THOST_FTDC_VC_MV;
-            break;
-        case VC_CV:
-            req.VolumeCondition = THOST_FTDC_VC_CV;
-            break;
-        default:
-            throw std::invalid_argument("volume_condition");
-        }
+        req.VolumeCondition = (TThostFtdcVolumeConditionType)kwargs["volume_condition"].cast<VolumeCondition>();
     }
 
     if (kwargs.contains("contingent_condition")) {
-        ContingentCondition cc = kwargs["contingent_condition"].cast<ContingentCondition>();
-        switch (cc) {
-        case CC_Immediately:
-            req.ContingentCondition = THOST_FTDC_CC_Immediately;
-            break;
-        case CC_Touch:
-            req.ContingentCondition = THOST_FTDC_CC_Touch;
-            break;
-        case CC_TouchProfit:
-            req.ContingentCondition = THOST_FTDC_CC_TouchProfit;
-            break;
-        case CC_ParkedOrder:
-            req.ContingentCondition = THOST_FTDC_CC_ParkedOrder;
-            break;
-        case CC_LastPriceGreaterThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterThanStopPrice;
-            break;
-        case CC_LastPriceGreaterEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceGreaterEqualStopPrice;
-            break;
-        case CC_LastPriceLesserThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserThanStopPrice;
-            break;
-        case CC_LastPriceLesserEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_LastPriceLesserEqualStopPrice;
-            break;
-        case CC_AskPriceGreaterThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterThanStopPrice;
-            break;
-        case CC_AskPriceGreaterEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceGreaterEqualStopPrice;
-            break;
-        case CC_AskPriceLesserThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserThanStopPrice;
-            break;
-        case CC_AskPriceLesserEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_AskPriceLesserEqualStopPrice;
-            break;
-        case CC_BidPriceGreaterThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterThanStopPrice;
-            break;
-        case CC_BidPriceGreaterEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceGreaterEqualStopPrice;
-            break;
-        case CC_BidPriceLesserThanStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserThanStopPrice;
-            break;
-        case CC_BidPriceLesserEqualStopPrice:
-            req.ContingentCondition = THOST_FTDC_CC_BidPriceLesserEqualStopPrice;
-            break;
-        default:
-            throw std::invalid_argument("contingent_condition");
-        }
+        req.ContingentCondition = (TThostFtdcContingentConditionType)kwargs["contingent_condition"].cast<ContingentCondition>();
     }
 
     if (kwargs.contains("min_volume")) {
@@ -826,17 +667,7 @@ void CtpClient::OrderAction(
     strncpy(req.InstrumentID, pOrder->InstrumentID, sizeof req.InstrumentID);
     req.FrontID = pOrder->FrontID;
     req.SessionID = pOrder->SessionID;
-
-    switch (actionFlag) {
-        case AF_Delete:
-            req.ActionFlag = THOST_FTDC_AF_Delete;
-            break;
-        case AF_Modify:
-            req.ActionFlag = THOST_FTDC_AF_Modify;
-            break;
-        default:
-            throw std::invalid_argument("action_flag");
-    }
+    req.ActionFlag = (TThostFtdcActionFlagType)actionFlag;
     req.LimitPrice = limitPrice;
     req.VolumeChange = volumeChange;
 
@@ -845,7 +676,7 @@ void CtpClient::OrderAction(
 
 void CtpClient::DeleteOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, int requestId)
 {
-    OrderAction(pOrder, AF_Delete, 0.0, 0, requestId);
+    OrderAction(pOrder, OrderActionFlag::AF_Delete, 0.0, 0, requestId);
 }
 
 #pragma endregion // Trader API
@@ -874,64 +705,64 @@ void CtpClientWrap::OnTdFrontDisconnected(int nReason)
     );
 }
 
-void CtpClientWrap::OnTdUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_td_user_login",
         OnTdUserLogin,
-        pRspUserLogin,
-        pRspInfo
+        RspUserLogin,
+        RspInfo
     );
 }
 
-void CtpClientWrap::OnTdUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_td_user_logout",
         OnTdUserLogout,
-        pUserLogout,
-        pRspInfo
+        UserLogout,
+        RspInfo
     );
 }
 
-void CtpClientWrap::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField &SettlementInfoConfirm, const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_settlement_info_confirm",
         OnRspSettlementInfoConfirm,
-        pSettlementInfoConfirm,
-        pRspInfo
+        SettlementInfoConfirm,
+        RspInfo
     );
 }
 
-void CtpClientWrap::OnErrOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder, const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_err_order_insert",
         OnErrOrderInsert,
-        pInputOrder,
-        pRspInfo
+        InputOrder,
+        RspInfo
     );
 }
 
-void CtpClientWrap::OnErrOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField &InputOrderAction, const CThostFtdcOrderActionField &OrderAction, const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_err_order_action",
         OnErrOrderAction,
-        pInputOrderAction,
-        pOrderAction,
-        pRspInfo
+        InputOrderAction,
+        OrderAction,
+        RspInfo
     );
 }
 
@@ -946,29 +777,29 @@ void CtpClientWrap::OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder)
     );
 }
 
-void CtpClientWrap::OnRtnTrade(CThostFtdcTradeField *pTrade)
+void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField &Trade)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_rtn_trade",
         OnRtnTrade,
-        pTrade
+        Trade
     );
 }
 
-void CtpClientWrap::OnTdError(CThostFtdcRspInfoField *pRspInfo)
+void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField &RspInfo)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,
         CtpClient,
         "on_td_error",
         OnTdError,
-        pRspInfo
+        RspInfo
     );
 }
 
-void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
@@ -976,72 +807,72 @@ void CtpClientWrap::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInf
         "on_rsp_order",
         OnRspQryOrder,
         pOrder,
-        pRspInfo,
+        RspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
         "on_rsp_trade",
         OnRspQryTrade,
-        pTrade,
-        pRspInfo,
+        Trade,
+        RspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField &TradingAccount, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
         "on_rsp_trading_account",
         OnRspQryTradingAccount,
-        pTradingAccount,
-        pRspInfo,
+        TradingAccount,
+        RspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField &InvestorPosition, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
         "on_rsp_investor_position",
         OnRspQryInvestorPosition,
-        pInvestorPosition,
-        pRspInfo,
+        InvestorPosition,
+        RspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField &InvestorPositionDetail, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
         "on_rsp_investor_position_detail",
         OnRspQryInvestorPositionDetail,
-        pInvestorPositionDetail,
-        pRspInfo,
+        InvestorPositionDetail,
+        RspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField &DepthMarketData, const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast)
 {
     PYBIND11_OVERLOAD_PURE_NAME(
         void,        /* Return type */
         CtpClient,
         "on_rsp_market_data",
         OnRspQryDepthMarketData,
-        pDepthMarketData,
-        pRspInfo,
+        DepthMarketData,
+        RspInfo,
         nRequestID,
         bIsLast
     );

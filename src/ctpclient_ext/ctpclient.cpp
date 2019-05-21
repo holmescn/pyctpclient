@@ -292,9 +292,14 @@ void CtpClient::ProcessResponse(CtpClient::Response &r)
         break;
     case ResponseType::OnRspQryOrder:
     {
-        auto pOrder = std::make_shared<CThostFtdcOrderField>();
-        memcpy(pOrder.get(), &r.Order, sizeof r.Order);
-        OnRspQryOrder(pOrder, r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
+        if (r.bRspIsNone) {
+            OnRspQryOrder(nullptr, r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
+        } else {
+            auto pOrder = std::make_shared<CThostFtdcOrderField>();
+            memcpy(pOrder.get(), &r.Order, sizeof r.Order);
+            OnRspQryOrder(pOrder, r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
+
+        }
     }
         _requestResponsed.store(true, std::memory_order_release);
         break;

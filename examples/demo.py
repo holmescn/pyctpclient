@@ -23,6 +23,7 @@ class Client(CtpClient):
     tick = None
     m1 = None
     m1_tick = None
+    counter = 0
 
     def init(self):
         """初始化 CTP API/SPI，切记不要忘了调用 `super` 的 `init`。
@@ -107,6 +108,9 @@ class Client(CtpClient):
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
         self.log.info("on_rsp_trading_account")
+        self.log.info("available: %.2f wan" % (trading_account.available / 10000))
+        self.log.info("position profit: %.2f" % trading_account.position_profit)
+        self.log.info("close profit: %.2f" % trading_account.close_profit)
 
     def on_rsp_investor_position(self, investor_position, rsp_info, is_last):
         """`query_investor_position` 的数据回传函数。请不要保存 `investor_position`，只能保存其中的数据。
@@ -115,6 +119,10 @@ class Client(CtpClient):
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
         self.log.info("on_rsp_investor_position")
+        self.log.info("direction %s", str(investor_position.position_direction))
+        self.log.info("position: %.2f", investor_position.position)
+        self.log.info("today position: %.2f", investor_position.today_position)
+        self.log.info("yd position: %.2f", investor_position.position - investor_position.today_position)
 
     def on_rsp_investor_position_detail(self, investor_position_detail, rsp_info, is_last):
         """`query_investor_position_detail` 的数据回传函数。请不要保存 `investor_position_detail`，只能保存其中的数据。
@@ -130,67 +138,10 @@ class Client(CtpClient):
         :type order: pyctpclient.ctpclient.Order
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        data = order
-        # print("error_id", rsp_info.error_id)
-        # print("broker_id", data.broker_id)
-        # print("investor_id", data.investor_id)
-        # print("instrument_id", data.instrument_id)
-        # print("order_ref", data.order_ref)
-        # print("price_type", data.price_type)
-        # print("direction", data.direction)
-        # print("combine_offset_flag", data.combine_offset_flag)
-        # print("combine_hedge_flag", data.combine_hedge_flag)
-        # print("limit_price", data.limit_price)
-        # print("volume_total_original", data.volume_total_original)
-        # print("time_condition", data.time_condition)
-        # print("GTD_date", data.GTD_date)
-        # print("volume_condition", data.volume_condition)
-        # print("contingent_condition", data.contingent_condition)
-        # print("force_close_reason", data.force_close_reason)
-        # print("is_auto_suspend", data.is_auto_suspend)
-        # print("business_unit", data.business_unit)
-        # print("request_id", data.request_id)
-        # print("order_local_id", data.order_local_id)
-        # print("exchange_id", data.exchange_id)
-        # print("participant_id", data.participant_id)
-        # print("client_id", data.client_id)
-        # print("exchange_inst_id", data.exchange_inst_id)
-        # print("trader_id", data.trader_id)
-        # print("install_id", data.install_id)
-        # print("status", data.status)
-        # print("submit_status", data.submit_status)
-        # print("notify_sequence", data.notify_sequence)
-        # print("trading_day", data.trading_day)
-        # print("settlement_id", data.settlement_id)
-        # print("order_sys_id", data.order_sys_id)
-        # print("source", data.source)
-        # print("type", data.type)
-        # print("volume_traded", data.volume_traded)
-        # print("volume_total", data.volume_total)
-        # print("insert_date", data.insert_date)
-        # print("insert_time", data.insert_time)
-        # print("active_time", data.active_time)
-        # print("suspend_time", data.suspend_time)
-        # print("cancel_time", data.cancel_time)
-        # print("active_trader_id", data.active_trader_id)
-        # print("clearing_part_id", data.clearing_part_id)
-        # print("sequence_no", data.sequence_no)
-        # print("front_id", data.front_id)
-        # print("session_id", data.session_id)
-        # print("user_product_info", data.user_product_info)
-        # print("status_msg", data.status_msg)
-        # print("user_force_close", data.user_force_close)
-        # print("active_user_id", data.active_user_id)
-        # print("broker_order_seq", data.broker_order_seq)
-        # print("relative_order_sys_id", data.relative_order_sys_id)
-        # print("ZCE_total_traded_volume", data.ZCE_total_traded_volume)
-        # print("is_swap_order", data.is_swap_order)
-        # print("branch_id", data.branch_id)
-        # print("invest_unit_id", data.invest_unit_id)
-        # print("account_id", data.account_id)
-        # print("currency_id", data.currency_id)
-        # print("ip_address", data.ip_address)
-        # print("mac_address", data.mac_address)
+        self.log.info('on_rsp_order')
+        if order is not None:
+            # 获取 Order 的信息，或者保存这个 Order
+            pass
 
     def on_rsp_trade(self, trade, rsp_info, is_last):
         """`query_trade` 的数据回传函数。请不要保存 `trade`，只能保存其中的数据。
@@ -198,46 +149,18 @@ class Client(CtpClient):
         :type trade: pyctpclient.ctpclient.Trade
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        data = trade
-        # print("broker_id", data.broker_id)
-        # print("investor_id", data.investor_id)
-        # print("instrument_id", data.instrument_id)
-        # print("order_ref", data.order_ref)
-        # print("user_id", data.user_id)
-        # print("exchange_id", data.exchange_id)
-        # print("trade_id", data.trade_id)
-        # print("direction", data.direction)
-        # print("order_sys_id", data.order_sys_id)
-        # print("participant_id", data.participant_id)
-        # print("client_id", data.client_id)
-        # print("trading_role", data.trading_role)
-        # print("exchange_inst_id", data.exchange_inst_id)
-        # print("offset_flag", data.offset_flag)
-        # print("hedge_flag", data.hedge_flag)
-        # print("price", data.price)
-        # print("volume", data.volume)
-        # print("trade_date", data.trade_date)
-        # print("trade_time", data.trade_time)
-        # print("trade_type", data.trade_type)
-        # print("price_source", data.price_source)
-        # print("trader_id", data.trader_id)
-        # print("order_local_id", data.order_local_id)
-        # print("clearing_part_id", data.clearing_part_id)
-        # print("business_unit", data.business_unit)
-        # print("sequence_no", data.sequence_no)
-        # print("trading_day", data.trading_day)
-        # print("settlement_id", data.settlement_id)
-        # print("broker_order_seq", data.broker_order_seq)
-        # print("trade_source", data.trade_source)
-        # print("invest_unit_id", data.invest_unit_id)
-
+        self.log.info('on_rsp_trade')
+        if trade is not None:
+            # 在当前交易日没有成效记录的时候，trade 是 None
+            pass
+            
     def on_rsp_market_data(self, data, rsp_info, request_id, is_last):
         """`query_market_data` 的数据回传函数。请不要保存 `data`，只能保存其中的数据。
 
         :type data: pyctpclient.ctpclient.MarketData
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        pass
+        self.log.info("instrument_id: %s", data.instrument_id)
 
     def on_rtn_order(self, order):
         """报单状态回传函数。当报单状态 `order.status` 或者 `order.submit_status` 变化时，
@@ -273,15 +196,18 @@ class Client(CtpClient):
     def on_idle(self):
         """空闲回传函数。当数据队列中没有数据需要处理，并且延迟大于 `idle_delay` 时调用
         """
-        pass
+        self.counter += 1
+        if self.counter > 30:
+            self.log.info("Exit")
+            self.exit()
 
 
 if __name__ == "__main__":
     # 创建 CTP Client 实例
     c = Client(
         # 实盘/电信1
-        md_address="tcp://180.168.146.187:10010",
-        td_address="tcp://180.168.146.187:10000",
+        #md_address="tcp://180.168.146.187:10010",
+        #td_address="tcp://180.168.146.187:10000",
         # 实盘/电信2
         #md_address="tcp://180.168.146.187:10011",
         #td_address="tcp://180.168.146.187:10001",
@@ -289,8 +215,8 @@ if __name__ == "__main__":
         #md_address="tcp://218.202.237.33:10012",
         #td_address="tcp://218.202.237.33:10002",
         # 开发
-        #md_address="tcp://180.168.146.187:10031",
-        #td_address="tcp://180.168.146.187:10030",
+        md_address="tcp://180.168.146.187:10031",
+        td_address="tcp://180.168.146.187:10030",
         broker_id="9999",
         user_id="",
         password=""

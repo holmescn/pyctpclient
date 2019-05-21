@@ -63,6 +63,7 @@ from .ctpclient import (
     OAS_ACCEPTED,
     OAS_REJECTED
 )
+from .ctpclient import Direction, OffsetFlag
 
 __version__ = "0.3.0a0"
 __author__ = "Holmes Conan"
@@ -189,3 +190,6 @@ class CtpClient(_CtpClient):
 
     def on_idle(self):
         pass
+
+    def insert_order(self, instrument_id: str, direction: Direction, offset_flag: OffsetFlag, price: float, volume: int, **kwargs):
+        _CtpClient.insert_order(self, instrument_id, direction, offset_flag, price, volume, **kwargs)

@@ -227,15 +227,15 @@ class CtpClient
         CThostFtdcRspInfoField RspInfo;
         int nRequestID;
         int nReason;
-        unsigned char bIsLast : 1;
-        unsigned char bRspIsNone : 1;
-        unsigned char bRspInfoIsNone : 1;
+        bool bIsLast;
+        bool bRspIsNone;
+        bool bRspInfoIsNone;
 
         inline void Init(ResponseType type, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
             memset(this, 0, sizeof *this);
             this->type = type;
             this->nRequestID = nRequestID;
-            this->bIsLast = bIsLast;    
+            this->bIsLast = bIsLast;
             if (pRspInfo) {
                 memcpy(&this->RspInfo, pRspInfo, sizeof this->RspInfo);
             } else {
@@ -353,7 +353,7 @@ public:
         TThostFtdcPriceType limitPrice,
         TThostFtdcVolumeType volume,
         py::kwargs kwargs);
-    void OrderAction(std::shared_ptr<CThostFtdcOrderField> pOrder, 
+    void OrderAction(std::shared_ptr<CThostFtdcOrderField> pOrder,
         OrderActionFlag actionFlag,
         TThostFtdcPriceType limitPrice,
         TThostFtdcVolumeType volumeChange,

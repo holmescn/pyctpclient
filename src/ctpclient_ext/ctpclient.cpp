@@ -128,7 +128,7 @@ void CtpClient::Init()
                 CtpClient::Request req;
                 if (_requestQueue.try_dequeue(req)) {
                     _requestResponsed.store(false, std::memory_order_release);
-                    ProcessRequest(&req);
+                    ProcessRequest(req);
                 }
             }
         }
@@ -141,7 +141,7 @@ void CtpClient::Join()
     while (g_exitSignal.wait_for(10ms) == std::future_status::timeout) {
         CtpClient::Response rsp;
         while (_responseQueue.try_dequeue(rsp)) {
-            ProcessResponse(&rsp);
+            ProcessResponse(rsp);
         }
 
         {
@@ -172,150 +172,150 @@ void CtpClient::Enqueue(const CtpClient::Response &r)
     _responseQueue.enqueue(r);
 }
 
-void CtpClient::ProcessRequest(CtpClient::Request *r)
+void CtpClient::ProcessRequest(CtpClient::Request &r)
 {
-    switch (r->type) {
+    switch (r.type) {
     case RequestType::QueryOrder:
-        assert_request(_tdApi->ReqQryOrder(&r->QryOrder, r->nRequestID));
+        assert_request(_tdApi->ReqQryOrder(&r.QryOrder, r.nRequestID));
         break;
     case RequestType::QueryTrade:
-        assert_request(_tdApi->ReqQryTrade(&r->QryTrade, r->nRequestID));
+        assert_request(_tdApi->ReqQryTrade(&r.QryTrade, r.nRequestID));
         break;
     case RequestType::QueryTradingAccount:
-        assert_request(_tdApi->QueryTradingAccount(&r->QryTradingAccount, r->nRequestID));
+        assert_request(_tdApi->QueryTradingAccount(&r.QryTradingAccount, r.nRequestID));
         break;
     case RequestType::QueryInvestorPosition:
-        assert_request(_tdApi->QueryInvestorPosition(&r->QryInvestorPosition, r->nRequestID));
+        assert_request(_tdApi->QueryInvestorPosition(&r.QryInvestorPosition, r.nRequestID));
         break;
     case RequestType::QueryInvestorPositionDetail:
-        assert_request(_tdApi->ReqQryInvestorPositionDetail(&r->QryInvestorPositionDetail, r->nRequestID));
+        assert_request(_tdApi->ReqQryInvestorPositionDetail(&r.QryInvestorPositionDetail, r.nRequestID));
         break;
     case RequestType::QueryMarketData:
-        assert_request(_tdApi->ReqQryDepthMarketData(&r->QryDepthMarketData, r->nRequestID));
+        assert_request(_tdApi->ReqQryDepthMarketData(&r.QryDepthMarketData, r.nRequestID));
         break;
     default:
         throw std::invalid_argument("unhandled request type.");
     }
 }
 
-void CtpClient::ProcessResponse(CtpClient::Response *r)
+void CtpClient::ProcessResponse(CtpClient::Response &r)
 {
-    switch (r->type) {
+    switch (r.type) {
     case ResponseType::OnMdFrontConnected:
         OnMdFrontConnected();
         break;
     case ResponseType::OnMdFrontDisconnected:
-        OnMdFrontDisconnected(r->nReason);
+        OnMdFrontDisconnected(r.nReason);
         break;
     case ResponseType::OnMdUserLogin:
-        OnMdUserLogin(r->RspUserLogin, r->RspInfo);
+        OnMdUserLogin(r.ptr<CThostFtdcRspUserLoginField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnMdUserLogout:
-        OnMdUserLogout(r->UserLogout, r->RspInfo);
+        OnMdUserLogout(r.ptr<CThostFtdcUserLogoutField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnSubMarketData:
-        OnSubscribeMarketData(r->SpecificInstrument, r->RspInfo, r->bIsLast);
+        OnSubscribeMarketData(r.ptr<CThostFtdcSpecificInstrumentField>(), r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
         break;
     case ResponseType::OnUnSubMarketData:
-        OnUnsubscribeMarketData(r->SpecificInstrument, r->RspInfo, r->bIsLast);
+        OnUnsubscribeMarketData(r.ptr<CThostFtdcSpecificInstrumentField>(), r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
         break;
     case ResponseType::OnRtnMarketData:
     {
         auto pDepthMarketData = std::make_shared<CThostFtdcDepthMarketDataField>();
-        memcpy(pDepthMarketData.get(), &r->DepthMarketData, sizeof r->DepthMarketData);
+        memcpy(pDepthMarketData.get(), &r.DepthMarketData, sizeof r.DepthMarketData);
         OnRtnMarketData(pDepthMarketData);
     }
         break;
     case ResponseType::OnTick:
     {
         auto pTickBar = std::make_shared<TickBar>();
-        memcpy(pTickBar.get(), &r->tick, sizeof r->tick);
+        memcpy(pTickBar.get(), &r.tick, sizeof r.tick);
         OnTick(pTickBar);
     }
         break;
     case ResponseType::On1Min:
     {
         auto pM1Bar = std::make_shared<M1Bar>();
-        memcpy(pM1Bar.get(), &r->m1, sizeof r->m1);
+        memcpy(pM1Bar.get(), &r.m1, sizeof r.m1);
         On1Min(pM1Bar);
     }
         break;
     case ResponseType::On1MinTick:
     {
         auto pM1Bar = std::make_shared<M1Bar>();
-        memcpy(pM1Bar.get(), &r->m1, sizeof r->m1);
+        memcpy(pM1Bar.get(), &r.m1, sizeof r.m1);
         On1MinTick(pM1Bar);
     }
         break;
     case ResponseType::OnMdError:
-        OnMdError(r->RspInfo);
+        OnMdError(r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnTdFrontConnected:
         OnTdFrontConnected();
         break;
     case ResponseType::OnTdFrontDisconnected:
-        OnTdFrontDisconnected(r->nReason);
+        OnTdFrontDisconnected(r.nReason);
         break;
     case ResponseType::OnTdUserLogin:
-        OnTdUserLogin(r->RspUserLogin, r->RspInfo);
+        OnTdUserLogin(r.ptr<CThostFtdcRspUserLoginField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnTdUserLogout:
-        OnTdUserLogout(r->UserLogout, r->RspInfo);
+        OnTdUserLogout(r.ptr<CThostFtdcUserLogoutField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnSettlementInfoConfirm:
-        OnRspSettlementInfoConfirm(r->SettlementInfoConfirm, r->RspInfo);
+        OnRspSettlementInfoConfirm(r.ptr<CThostFtdcSettlementInfoConfirmField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnRspOrderInsert:
-        OnErrOrderInsert(r->InputOrder, r->RspInfo);
+        OnErrOrderInsert(r.ptr<CThostFtdcInputOrderField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnRspOrderAction:
-        OnErrOrderAction(r->InputOrderAction, r->OrderAction, r->RspInfo);
+        OnErrOrderAction(r.ptr<CThostFtdcInputOrderActionField>(), nullptr, r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnErrRtnOrderInsert:
-        OnErrOrderInsert(r->InputOrder, r->RspInfo);
+        OnErrOrderInsert(r.ptr<CThostFtdcInputOrderField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnErrRtnOrderAction:
-        OnErrOrderAction(r->InputOrderAction, r->OrderAction, r->RspInfo);
+        OnErrOrderAction(nullptr, r.ptr<CThostFtdcOrderActionField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnRtnOrder:
     {
         auto pOrder = std::make_shared<CThostFtdcOrderField>();
-        memcpy(pOrder.get(), &r->Order, sizeof r->Order);
+        memcpy(pOrder.get(), &r.Order, sizeof r.Order);
         OnRtnOrder(pOrder);
     }
         break;
     case ResponseType::OnRtnTrade:
-        OnRtnTrade(r->Trade);
+        OnRtnTrade(r.ptr<CThostFtdcTradeField>());
         break;
     case ResponseType::OnTdError:
-        OnTdError(r->RspInfo);
+        OnTdError(r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnRspQryOrder:
     {
         auto pOrder = std::make_shared<CThostFtdcOrderField>();
-        memcpy(pOrder.get(), &r->Order, sizeof r->Order);
-        OnRspQryOrder(pOrder, r->RspInfo, r->bIsLast);
+        memcpy(pOrder.get(), &r.Order, sizeof r.Order);
+        OnRspQryOrder(pOrder, r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
     }
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTrade:
-        OnRspQryTrade(r->Trade, r->RspInfo, r->bIsLast);
+        OnRspQryTrade(r.ptr<CThostFtdcTradeField>(), r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryTradingAccount:
-        OnRspQryTradingAccount(r->TradingAccount, r->RspInfo, r->bIsLast);
+        OnRspQryTradingAccount(r.ptr<CThostFtdcTradingAccountField>(), r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPosition:
-        OnRspQryInvestorPosition(r->InvestorPosition, r->RspInfo, r->bIsLast);
+        OnRspQryInvestorPosition(r.ptr<CThostFtdcInvestorPositionField>(), r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryDepthMarketData:
-        OnRspQryDepthMarketData(r->DepthMarketData, r->RspInfo, r->nRequestID, r->bIsLast);
+        OnRspQryDepthMarketData(r.ptr<CThostFtdcDepthMarketDataField>(), r.ptr<CThostFtdcRspInfoField>(), r.nRequestID, r.bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     case ResponseType::OnRspQryInvestorPositionDetail:
-        OnRspQryInvestorPositionDetail(r->InvestorPositionDetail, r->RspInfo, r->bIsLast);
+        OnRspQryInvestorPositionDetail(r.ptr<CThostFtdcInvestorPositionDetailField>(), r.ptr<CThostFtdcRspInfoField>(), r.bIsLast);
         _requestResponsed.store(true, std::memory_order_release);
         break;
     default:
@@ -398,7 +398,7 @@ void CtpClientWrap::OnMdFrontDisconnected(int nReason)
     );
 }
 
-void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -408,12 +408,12 @@ void CtpClientWrap::OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogi
         CtpClient,
         "on_md_user_login",
         OnMdUserLogin,
-        RspUserLogin,
-        RspInfo
+        pRspUserLogin,
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -423,12 +423,12 @@ void CtpClientWrap::OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, 
         CtpClient,
         "on_md_user_logout",
         OnMdUserLogout,
-        UserLogout,
-        RspInfo
+        pUserLogout,
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField *pSpecificInstrument, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -438,13 +438,13 @@ void CtpClientWrap::OnSubscribeMarketData(const CThostFtdcSpecificInstrumentFiel
         CtpClient,
         "on_subscribe_market_data",
         OnSubscribeMarketData,
-        SpecificInstrument,
-        RspInfo,
+        pSpecificInstrument,
+        pRspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField *pSpecificInstrument, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -454,8 +454,8 @@ void CtpClientWrap::OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentFi
         CtpClient,
         "on_unsubscribe_market_data",
         OnUnsubscribeMarketData,
-        SpecificInstrument,
-        RspInfo,
+        pSpecificInstrument,
+        pRspInfo,
         bIsLast
     );
 }
@@ -516,7 +516,7 @@ void CtpClientWrap::On1MinTick(std::shared_ptr<M1Bar> pBar)
     );
 }
 
-void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -526,7 +526,7 @@ void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField &RspInfo)
         CtpClient,
         "on_md_error",
         OnMdError,
-        RspInfo
+        pRspInfo
     );
 }
 
@@ -557,13 +557,14 @@ void CtpClient::ConfirmSettlementInfo()
     assert_request(_tdApi->ConfirmSettlementInfo(&req, 0));
 }
 
-void CtpClient::QueryOrder()
+void CtpClient::QueryOrder(const std::string &instrumentId)
 {
     CtpClient::Request r;
     memset(&r, 0, sizeof r);
     r.type = RequestType::QueryOrder;
     strncpy(r.QryOrder.BrokerID, _brokerId.c_str(), sizeof r.QryOrder.BrokerID);
     strncpy(r.QryOrder.InvestorID, _userId.c_str(), sizeof r.QryOrder.InvestorID);
+    strncpy(r.QryOrder.InstrumentID, instrumentId.c_str(), sizeof r.QryOrder.InstrumentID);
 
     _requestQueue.enqueue(r);
 }
@@ -752,7 +753,7 @@ void CtpClientWrap::OnTdFrontDisconnected(int nReason)
     );
 }
 
-void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -762,12 +763,12 @@ void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogi
         CtpClient,
         "on_td_user_login",
         OnTdUserLogin,
-        RspUserLogin,
-        RspInfo
+        pRspUserLogin,
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -777,12 +778,12 @@ void CtpClientWrap::OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, 
         CtpClient,
         "on_td_user_logout",
         OnTdUserLogout,
-        UserLogout,
-        RspInfo
+        pUserLogout,
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField &SettlementInfoConfirm, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -792,12 +793,12 @@ void CtpClientWrap::OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoCon
         CtpClient,
         "on_settlement_info_confirm",
         OnRspSettlementInfoConfirm,
-        SettlementInfoConfirm,
-        RspInfo
+        pSettlementInfoConfirm,
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField *pInputOrder, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -807,12 +808,12 @@ void CtpClientWrap::OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder
         CtpClient,
         "on_err_order_insert",
         OnErrOrderInsert,
-        InputOrder,
-        RspInfo
+        pInputOrder,
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField &InputOrderAction, const CThostFtdcOrderActionField &OrderAction, const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField *pInputOrderAction, const CThostFtdcOrderActionField *pOrderAction, const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -822,9 +823,9 @@ void CtpClientWrap::OnErrOrderAction(const CThostFtdcInputOrderActionField &Inpu
         CtpClient,
         "on_err_order_action",
         OnErrOrderAction,
-        InputOrderAction,
-        OrderAction,
-        RspInfo
+        pInputOrderAction,
+        pOrderAction,
+        pRspInfo
     );
 }
 
@@ -842,7 +843,7 @@ void CtpClientWrap::OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder)
     );
 }
 
-void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField &Trade)
+void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField *pTrade)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -852,11 +853,11 @@ void CtpClientWrap::OnRtnTrade(const CThostFtdcTradeField &Trade)
         CtpClient,
         "on_rtn_trade",
         OnRtnTrade,
-        Trade
+        pTrade
     );
 }
 
-void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField &RspInfo)
+void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField *pRspInfo)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -866,11 +867,11 @@ void CtpClientWrap::OnTdError(const CThostFtdcRspInfoField &RspInfo)
         CtpClient,
         "on_td_error",
         OnTdError,
-        RspInfo
+        pRspInfo
     );
 }
 
-void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -881,12 +882,12 @@ void CtpClientWrap::OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, 
         "on_rsp_order",
         OnRspQryOrder,
         pOrder,
-        RspInfo,
+        pRspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField *pTrade, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -896,13 +897,13 @@ void CtpClientWrap::OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThos
         CtpClient,
         "on_rsp_trade",
         OnRspQryTrade,
-        Trade,
-        RspInfo,
+        pTrade,
+        pRspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField &TradingAccount, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField *pTradingAccount, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -912,13 +913,13 @@ void CtpClientWrap::OnRspQryTradingAccount(const CThostFtdcTradingAccountField &
         CtpClient,
         "on_rsp_trading_account",
         OnRspQryTradingAccount,
-        TradingAccount,
-        RspInfo,
+        pTradingAccount,
+        pRspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField &InvestorPosition, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField *pInvestorPosition, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -928,13 +929,13 @@ void CtpClientWrap::OnRspQryInvestorPosition(const CThostFtdcInvestorPositionFie
         CtpClient,
         "on_rsp_investor_position",
         OnRspQryInvestorPosition,
-        InvestorPosition,
-        RspInfo,
+        pInvestorPosition,
+        pRspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField &InvestorPositionDetail, const CThostFtdcRspInfoField &RspInfo, bool bIsLast)
+void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -944,13 +945,13 @@ void CtpClientWrap::OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPosit
         CtpClient,
         "on_rsp_investor_position_detail",
         OnRspQryInvestorPositionDetail,
-        InvestorPositionDetail,
-        RspInfo,
+        pInvestorPositionDetail,
+        pRspInfo,
         bIsLast
     );
 }
 
-void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField &DepthMarketData, const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast)
+void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField *pDepthMarketData, const CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
     /* Acquire GIL before calling Python code */
     py::gil_scoped_acquire acquire;
@@ -960,8 +961,8 @@ void CtpClientWrap::OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField
         CtpClient,
         "on_rsp_market_data",
         OnRspQryDepthMarketData,
-        DepthMarketData,
-        RspInfo,
+        pDepthMarketData,
+        pRspInfo,
         nRequestID,
         bIsLast
     );

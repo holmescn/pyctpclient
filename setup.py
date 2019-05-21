@@ -15,9 +15,8 @@ if sys.platform == 'win32':
 elif sys.platform == "linux":
     extra_compile_args = [
         "-std=c++17",  # standard
-        "-O3",         # Optimization
         "-Wno-delete-incomplete", "-Wno-sign-compare",
-        '-Wall', '-Wextra', '-Wno-unknown-pragmas', '-Wno-unused-parameter'
+        "-Wextra", "-Wno-unknown-pragmas", "-Wno-unused-parameter"
     ]
     extra_link_args = ["-lstdc++"]
 else:

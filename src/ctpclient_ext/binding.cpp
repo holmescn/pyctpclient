@@ -923,7 +923,7 @@ PYBIND11_MODULE(ctpclient, m) {
 
     .def("td_login", &CtpClient::TdLogin)
     .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
-    .def("query_order", &CtpClient::QueryOrder)
+    .def("query_order", &CtpClient::QueryOrder, "instrument_id"_a="")
     .def("query_trade", &CtpClient::QueryTrade)
     .def("query_trading_account", &CtpClient::QueryTradingAccount)
     .def("query_investor_position", &CtpClient::QueryInvestorPosition)

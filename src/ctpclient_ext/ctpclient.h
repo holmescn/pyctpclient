@@ -227,7 +227,9 @@ class CtpClient
         CThostFtdcRspInfoField RspInfo;
         int nRequestID;
         int nReason;
-        bool bIsLast;
+        unsigned char bIsLast : 1;
+        unsigned char bRspIsNone : 1;
+        unsigned char bRspInfoIsNone : 1;
 
         inline void Init(ResponseType type, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {
             memset(this, 0, sizeof *this);
@@ -237,16 +239,21 @@ class CtpClient
             if (pRspInfo) {
                 memcpy(&this->RspInfo, pRspInfo, sizeof this->RspInfo);
             } else {
-                this->RspInfo.ErrorID = -1;
+                this->bRspInfoIsNone = true;
             }
+        }
+
+        template<class T>
+        inline T* ptr() {
+            return bRspIsNone ? nullptr : reinterpret_cast<T*>(&base);
         }
     };
 
     std::atomic_bool _requestResponsed;
     moodycamel::ConcurrentQueue<CtpClient::Request>  _requestQueue;
     moodycamel::ConcurrentQueue<CtpClient::Response> _responseQueue;
-    void ProcessRequest(CtpClient::Request *r);
-    void ProcessResponse(CtpClient::Response *r);
+    void ProcessRequest(CtpClient::Request &r);
+    void ProcessResponse(CtpClient::Response &r);
 
     template<class T>
     void Enqueue(ResponseType type, T *pRsp, CThostFtdcRspInfoField *pRspInfo=nullptr, int nRequestID=0, bool bIsLast=true) {
@@ -254,6 +261,8 @@ class CtpClient
         r.Init(type, pRspInfo, nRequestID, bIsLast);
         if (pRsp) {
             memcpy(&r.base, pRsp, sizeof *pRsp);
+        } else {
+            r.bRspIsNone = true;
         }
 
         Enqueue(r);
@@ -314,21 +323,21 @@ public:
     // MdSpi
 	virtual void OnMdFrontConnected() = 0;
 	virtual void OnMdFrontDisconnected(int nReason) = 0;
-	virtual void OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo) = 0;
-	virtual void OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo) = 0;
-    virtual void OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
-    virtual void OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
+	virtual void OnMdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnMdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo) = 0;
+    virtual void OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField *pSpecificInstrument, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
+    virtual void OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField *pSpecificInstrument, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
     virtual void OnRtnMarketData(std::shared_ptr<CThostFtdcDepthMarketDataField> pDepthMarketData) = 0;
     virtual void OnTick(std::shared_ptr<TickBar> pBar) = 0;
     virtual void On1Min(std::shared_ptr<M1Bar> pBar) = 0;
     virtual void On1MinTick(std::shared_ptr<M1Bar> pBar) = 0;
-	virtual void OnMdError(const CThostFtdcRspInfoField &RspInfo) = 0;
+	virtual void OnMdError(const CThostFtdcRspInfoField *pRspInfo) = 0;
 
     virtual void OnIdle() = 0;
 
 public:
     // TraderApi
-    void QueryOrder();
+    void QueryOrder(const std::string &instrumentId);
     void QueryTrade();
     void QueryTradingAccount();
     void QueryInvestorPosition();
@@ -355,23 +364,27 @@ public:
     // TraderSpi
 	virtual void OnTdFrontConnected() = 0;
     virtual void OnTdFrontDisconnected(int nReason) = 0;
-	virtual void OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo) = 0;
-	virtual void OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo) = 0;
-	virtual void OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField &SettlementInfoConfirm, const CThostFtdcRspInfoField &RspInfo) = 0;
-	virtual void OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder, const CThostFtdcRspInfoField &RspInfo) = 0;
-	virtual void OnErrOrderAction(const CThostFtdcInputOrderActionField &InputOrderAction, const CThostFtdcOrderActionField &OrderAction, const CThostFtdcRspInfoField &RspInfo) = 0;
+	virtual void OnTdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnTdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, const CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnErrOrderInsert(const CThostFtdcInputOrderField *pInputOrder, const CThostFtdcRspInfoField *pRspInfo) = 0;
+	virtual void OnErrOrderAction(const CThostFtdcInputOrderActionField *pInputOrderAction, const CThostFtdcOrderActionField *pOrderAction, const CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder) = 0;
-	virtual void OnRtnTrade(const CThostFtdcTradeField &Trade) = 0;
-	virtual void OnTdError(const CThostFtdcRspInfoField &RspInfo) = 0;
+	virtual void OnRtnTrade(const CThostFtdcTradeField *pTrade) = 0;
+	virtual void OnTdError(const CThostFtdcRspInfoField *pRspInfo) = 0;
 
-    virtual void OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
-    virtual void OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
-    virtual void OnRspQryTradingAccount(const CThostFtdcTradingAccountField &TradingAccount, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
-    virtual void OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField &InvestorPosition, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
-    virtual void OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField &InvestorPositionDetail, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) = 0;
-    virtual void OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField &DepthMarketData, const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast) = 0;
+    virtual void OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
+    virtual void OnRspQryTrade(const CThostFtdcTradeField *pTrade, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
+    virtual void OnRspQryTradingAccount(const CThostFtdcTradingAccountField *pTradingAccount, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
+    virtual void OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField *pInvestorPosition, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
+    virtual void OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) = 0;
+    virtual void OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField *pDepthMarketData, const CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) = 0;
 };
 
+template<>
+inline CThostFtdcRspInfoField *CtpClient::Response::ptr<CThostFtdcRspInfoField>() {
+    return bRspInfoIsNone ? nullptr : &RspInfo;
+}
 
 struct CtpClientWrap : CtpClient
 {
@@ -380,33 +393,33 @@ struct CtpClientWrap : CtpClient
 
 	void OnMdFrontConnected() override;
 	void OnMdFrontDisconnected(int nReason) override;
-	void OnMdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo) override;
-	void OnMdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo) override;
-    void OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
-    void OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField &SpecificInstrument, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
+	void OnMdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo) override;
+	void OnMdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo) override;
+    void OnSubscribeMarketData(const CThostFtdcSpecificInstrumentField *pSpecificInstrument, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
+    void OnUnsubscribeMarketData(const CThostFtdcSpecificInstrumentField *pSpecificInstrument, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
     void OnRtnMarketData(std::shared_ptr<CThostFtdcDepthMarketDataField> pDepthMarketData) override;
     void OnTick(std::shared_ptr<TickBar> pBar) override;
     void On1Min(std::shared_ptr<M1Bar> pBar) override;
     void On1MinTick(std::shared_ptr<M1Bar> pBar) override;
-	void OnMdError(const CThostFtdcRspInfoField &RspInfo) override;
+	void OnMdError(const CThostFtdcRspInfoField *pRspInfo) override;
 
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
-	void OnTdUserLogin(const CThostFtdcRspUserLoginField &RspUserLogin, const CThostFtdcRspInfoField &RspInfo) override;
-	void OnTdUserLogout(const CThostFtdcUserLogoutField &UserLogout, const CThostFtdcRspInfoField &RspInfo) override;
-	void OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField &SettlementInfoConfirm, const CThostFtdcRspInfoField &RspInfo) override;
-    void OnErrOrderInsert(const CThostFtdcInputOrderField &InputOrder, const CThostFtdcRspInfoField &RspInfo) override;
-    void OnErrOrderAction(const CThostFtdcInputOrderActionField &InputOrderAction, const CThostFtdcOrderActionField &OrderAction, const CThostFtdcRspInfoField &RspInfo) override;
+	void OnTdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo) override;
+	void OnTdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo) override;
+	void OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, const CThostFtdcRspInfoField *pRspInfo) override;
+    void OnErrOrderInsert(const CThostFtdcInputOrderField *pInputOrder, const CThostFtdcRspInfoField *pRspInfo) override;
+    void OnErrOrderAction(const CThostFtdcInputOrderActionField *pInputOrderAction, const CThostFtdcOrderActionField *pOrderAction, const CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRtnOrder(std::shared_ptr<CThostFtdcOrderField> pOrder) override;
-	void OnRtnTrade(const CThostFtdcTradeField &Trade) override;
-	void OnTdError(const CThostFtdcRspInfoField &RspInfo) override;
+	void OnRtnTrade(const CThostFtdcTradeField *pTrade) override;
+	void OnTdError(const CThostFtdcRspInfoField *pRspInfo) override;
 
-    void OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
-    void OnRspQryTrade(const CThostFtdcTradeField &Trade, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
-    void OnRspQryTradingAccount(const CThostFtdcTradingAccountField &TradingAccount, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
-    void OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField &InvestorPosition, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
-    void OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField &InvestorPositionDetail, const CThostFtdcRspInfoField &RspInfo, bool bIsLast) override;
-    void OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField &DepthMarketData, const CThostFtdcRspInfoField &RspInfo, int nRequestID, bool bIsLast) override;
+    void OnRspQryOrder(std::shared_ptr<CThostFtdcOrderField> pOrder, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
+    void OnRspQryTrade(const CThostFtdcTradeField *pTrade, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
+    void OnRspQryTradingAccount(const CThostFtdcTradingAccountField *pTradingAccount, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
+    void OnRspQryInvestorPosition(const CThostFtdcInvestorPositionField *pInvestorPosition, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
+    void OnRspQryInvestorPositionDetail(const CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, const CThostFtdcRspInfoField *pRspInfo, bool bIsLast) override;
+    void OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField *pDepthMarketData, const CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 
     void OnIdle() override;
 };

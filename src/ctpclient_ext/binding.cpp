@@ -45,12 +45,12 @@ const char* tostr_PositionDirection(T const *this_)
 }
 
 template<class T>
-Direction toenum_Direction(T const *this_)
+const char* tostr_Direction(T const *this_)
 {
   switch(this_->Direction) {
-    case THOST_FTDC_D_Buy:  return Direction::D_Buy;
-    case THOST_FTDC_D_Sell: return Direction::D_Sell;
-    default: throw std::invalid_argument("Invalid direction.");
+    case THOST_FTDC_D_Buy:  return "buy";
+    case THOST_FTDC_D_Sell: return "sell";
+    default: return "unknown";
   }
 }
 
@@ -245,7 +245,7 @@ const char* tostr_ActionFlag(T const *this_)
 }
 
 template<class T>
-OrderSubmitStatus tostr_OrderSubmitStatus(T const *this_)
+OrderSubmitStatus toenum_OrderSubmitStatus(T const *this_)
 {
   switch(this_->OrderSubmitStatus) {
     case THOST_FTDC_OSS_InsertSubmitted: return OrderSubmitStatus::OSS_InsertSubmitted;
@@ -259,7 +259,7 @@ OrderSubmitStatus tostr_OrderSubmitStatus(T const *this_)
 }
 
 template<class T>
-OrderStatus tostr_OrderStatus(T const *this_)
+OrderStatus toenum_OrderStatus(T const *this_)
 {
   switch(this_->OrderStatus) {
     case THOST_FTDC_OST_AllTraded:          return OrderStatus::OST_AllTraded;
@@ -332,7 +332,7 @@ const char* tostr_TradeSource(T const* this_)
 }
 
 template<class T>
-OrderActionStatus tostr_OrderActionStatus(T const* this_)
+OrderActionStatus toenum_OrderActionStatus(T const* this_)
 {
   switch(this_->OrderActionStatus) {
     case THOST_FTDC_OAS_Submitted: return OrderActionStatus::OAS_Submitted;
@@ -349,114 +349,105 @@ PYBIND11_MODULE(ctpclient, m) {
 #pragma region Enums
 
   py::enum_<Direction>(m, "Direction")
-    .value("D_BUY", Direction::D_Buy)
-    .value("D_SELL", Direction::D_Sell)
-    .export_values();
+    .value("BUY", Direction::D_Buy)
+    .value("SELL", Direction::D_Sell);
 
   py::enum_<OffsetFlag>(m, "OffsetFlag")
-    .value("OF_OPEN", OffsetFlag::OF_Open)
-    .value("OF_CLOSE", OffsetFlag::OF_Close)
-    .value("OF_FORCE_CLOSE", OffsetFlag::OF_ForceClose)
-    .value("OF_CLOSE_TODAY", OffsetFlag::OF_CloseToday)
-    .value("OF_CLOSE_YESTERDAY", OffsetFlag::OF_CloseYesterday)
-    .value("OF_FORCE_OFF", OffsetFlag::OF_ForceOff)
-    .value("OF_LOCAL_FORCE_CLOSE", OffsetFlag::OF_LocalForceClose)
-    .export_values();
+    .value("OPEN", OffsetFlag::OF_Open)
+    .value("CLOSE", OffsetFlag::OF_Close)
+    .value("FORCE_CLOSE", OffsetFlag::OF_ForceClose)
+    .value("CLOSE_TODAY", OffsetFlag::OF_CloseToday)
+    .value("CLOSE_YESTERDAY", OffsetFlag::OF_CloseYesterday)
+    .value("FORCE_OFF", OffsetFlag::OF_ForceOff)
+    .value("LOCAL_FORCE_CLOSE", OffsetFlag::OF_LocalForceClose);
 
   py::enum_<OrderPriceType>(m, "OrderPriceType")
-    .value("OPT_ANY_PRICE", OrderPriceType::OPT_AnyPrice)
-    .value("OPT_LIMIT_PRICE", OrderPriceType::OPT_LimitPrice)
-    .value("OPT_BEST_PRICE", OrderPriceType::OPT_BestPrice)
-    .value("OPT_LAST_PRICE", OrderPriceType::OPT_LastPrice)
-    .value("OPT_LAST_PRICE_PLUS_ONE_TICK", OrderPriceType::OPT_LastPricePlusOneTick)
-    .value("OPT_LAST_PRICE_PLUS_TWO_TICKS", OrderPriceType::OPT_LastPricePlusTwoTicks)
-    .value("OPT_LAST_PRICE_PLUS_THREE_TICKS", OrderPriceType::OPT_LastPricePlusThreeTicks)
-    .value("OPT_ASK_PRICE1", OrderPriceType::OPT_AskPrice1)
-    .value("OPT_ASK_PRICE1_PLUS_ONE_TICK", OrderPriceType::OPT_AskPrice1PlusOneTick)
-    .value("OPT_ASK_PRICE1_PLUS_TWO_TICKS", OrderPriceType::OPT_AskPrice1PlusTwoTicks)
-    .value("OPT_ASK_PRICE1_PLUS_THREE_TICKS", OrderPriceType::OPT_AskPrice1PlusThreeTicks)
-    .value("OPT_BID_PRICE1", OrderPriceType::OPT_BidPrice1)
-    .value("OPT_BID_PRICE1_PLUS_ONE_TICK", OrderPriceType::OPT_BidPrice1PlusOneTick)
-    .value("OPT_BID_PRICE1_PLUS_TWO_TICKS", OrderPriceType::OPT_BidPrice1PlusTwoTicks)
-    .value("OPT_BID_PRICE1_PLUS_THREE_TICKS", OrderPriceType::OPT_BidPrice1PlusThreeTicks)
-    .value("OPT_FIVE_LEVEL_PRICE", OrderPriceType::OPT_FiveLevelPrice)
-    .export_values();
+    .value("ANY_PRICE", OrderPriceType::OPT_AnyPrice)
+    .value("LIMIT_PRICE", OrderPriceType::OPT_LimitPrice)
+    .value("BEST_PRICE", OrderPriceType::OPT_BestPrice)
+    .value("LAST_PRICE", OrderPriceType::OPT_LastPrice)
+    .value("LAST_PRICE_PLUS_ONE_TICK", OrderPriceType::OPT_LastPricePlusOneTick)
+    .value("LAST_PRICE_PLUS_TWO_TICKS", OrderPriceType::OPT_LastPricePlusTwoTicks)
+    .value("LAST_PRICE_PLUS_THREE_TICKS", OrderPriceType::OPT_LastPricePlusThreeTicks)
+    .value("ASK_PRICE1", OrderPriceType::OPT_AskPrice1)
+    .value("ASK_PRICE1_PLUS_ONE_TICK", OrderPriceType::OPT_AskPrice1PlusOneTick)
+    .value("ASK_PRICE1_PLUS_TWO_TICKS", OrderPriceType::OPT_AskPrice1PlusTwoTicks)
+    .value("ASK_PRICE1_PLUS_THREE_TICKS", OrderPriceType::OPT_AskPrice1PlusThreeTicks)
+    .value("BID_PRICE1", OrderPriceType::OPT_BidPrice1)
+    .value("BID_PRICE1_PLUS_ONE_TICK", OrderPriceType::OPT_BidPrice1PlusOneTick)
+    .value("BID_PRICE1_PLUS_TWO_TICKS", OrderPriceType::OPT_BidPrice1PlusTwoTicks)
+    .value("BID_PRICE1_PLUS_THREE_TICKS", OrderPriceType::OPT_BidPrice1PlusThreeTicks)
+    .value("FIVE_LEVEL_PRICE", OrderPriceType::OPT_FiveLevelPrice);
 
   py::enum_<HedgeFlag>(m, "HedgeFlag")
-    .value("HF_SPECULATION", HedgeFlag::HF_Speculation)
-    .value("HF_ARBITRAGE", HedgeFlag::HF_Arbitrage)
-    .value("HF_HEDGE", HedgeFlag::HF_Hedge)
-    .value("HF_MARKET_MAKER", HedgeFlag::HF_MarketMaker)
-    .export_values();
+    .value("SPECULATION", HedgeFlag::HF_Speculation)
+    .value("ARBITRAGE", HedgeFlag::HF_Arbitrage)
+    .value("HEDGE", HedgeFlag::HF_Hedge)
+    .value("MARKET_MAKER", HedgeFlag::HF_MarketMaker);
 
   py::enum_<TimeCondition>(m, "TimeCondition")
-    .value("TC_IOC", TimeCondition::TC_IOC)
-    .value("TC_GFS", TimeCondition::TC_GFS)
-    .value("TC_GFD", TimeCondition::TC_GFD)
-    .value("TC_GTD", TimeCondition::TC_GTD)
-    .value("TC_GTC", TimeCondition::TC_GTC)
-    .value("TC_GFA", TimeCondition::TC_GFA)
-    .export_values();
-  
+    .value("IOC", TimeCondition::TC_IOC)
+    .value("GFS", TimeCondition::TC_GFS)
+    .value("GFD", TimeCondition::TC_GFD)
+    .value("GTD", TimeCondition::TC_GTD)
+    .value("GTC", TimeCondition::TC_GTC)
+    .value("GFA", TimeCondition::TC_GFA);
+
   py::enum_<VolumeCondition>(m, "VolumeCondition")
-    .value("VC_ANY_VOLUME", VolumeCondition::VC_AV)
-    .value("VC_MIN_VOLUME", VolumeCondition::VC_MV)
-    .value("VC_ALL_VOLUME", VolumeCondition::VC_CV)
-    .export_values();
+    .value("ANY_VOLUME", VolumeCondition::VC_AV)
+    .value("MIN_VOLUME", VolumeCondition::VC_MV)
+    .value("ALL_VOLUME", VolumeCondition::VC_CV);
 
   py::enum_<ContingentCondition>(m, "ContingentCondition")
-    .value("CC_IMMEDIATELY", ContingentCondition::CC_Immediately)
-    .value("CC_TOUCH", ContingentCondition::CC_Touch)
-    .value("CC_TOUCH_PROFIT", ContingentCondition::CC_TouchProfit)
-    .value("CC_PARKED_ORDER", ContingentCondition::CC_ParkedOrder)
-    .value("CC_LAST_PRICE_GREATER_THAN_STOP_PRICE", ContingentCondition::CC_LastPriceGreaterThanStopPrice)
-    .value("CC_LAST_PRICE_GREATER_EQUAL_STOP_PRICE", ContingentCondition::CC_LastPriceGreaterEqualStopPrice)
-    .value("CC_LAST_PRICE_LESSER_THAN_STOP_PRICE", ContingentCondition::CC_LastPriceLesserThanStopPrice)
-    .value("CC_LAST_PRICE_LESSER_EQUAL_STOP_PRICE", ContingentCondition::CC_LastPriceLesserEqualStopPrice)
-    .value("CC_ASK_PRICE_GREATER_THAN_STOP_PRICE", ContingentCondition::CC_AskPriceGreaterThanStopPrice)
-    .value("CC_ASK_PRICE_GREATER_EQUAL_STOP_PRICE", ContingentCondition::CC_AskPriceGreaterEqualStopPrice)
-    .value("CC_ASK_PRICE_LESSER_THAN_STOP_PRICE", ContingentCondition::CC_AskPriceLesserThanStopPrice)
-    .value("CC_ASK_PRICE_LESSER_EQUAL_STOP_PRICE", ContingentCondition::CC_AskPriceLesserEqualStopPrice)
-    .value("CC_BID_PRICE_GREATER_THAN_STOP_PRICE", ContingentCondition::CC_BidPriceGreaterThanStopPrice)
-    .value("CC_BID_PRICE_GREATER_EQUAL_STOP_PRICE", ContingentCondition::CC_BidPriceGreaterEqualStopPrice)
-    .value("CC_BID_PRICE_LESSER_THAN_STOP_PRICE", ContingentCondition::CC_BidPriceLesserThanStopPrice)
-    .value("CC_BID_PRICE_LESSER_EQUAL_STOP_PRICE", ContingentCondition::CC_BidPriceLesserEqualStopPrice)
-    .export_values();
+    .value("IMMEDIATELY", ContingentCondition::CC_Immediately)
+    .value("TOUCH", ContingentCondition::CC_Touch)
+    .value("TOUCH_PROFIT", ContingentCondition::CC_TouchProfit)
+    .value("PARKED_ORDER", ContingentCondition::CC_ParkedOrder)
+    .value("LAST_PRICE_GREATER_THAN_STOP_PRICE", ContingentCondition::CC_LastPriceGreaterThanStopPrice)
+    .value("LAST_PRICE_GREATER_EQUAL_STOP_PRICE", ContingentCondition::CC_LastPriceGreaterEqualStopPrice)
+    .value("LAST_PRICE_LESSER_THAN_STOP_PRICE", ContingentCondition::CC_LastPriceLesserThanStopPrice)
+    .value("LAST_PRICE_LESSER_EQUAL_STOP_PRICE", ContingentCondition::CC_LastPriceLesserEqualStopPrice)
+    .value("ASK_PRICE_GREATER_THAN_STOP_PRICE", ContingentCondition::CC_AskPriceGreaterThanStopPrice)
+    .value("ASK_PRICE_GREATER_EQUAL_STOP_PRICE", ContingentCondition::CC_AskPriceGreaterEqualStopPrice)
+    .value("ASK_PRICE_LESSER_THAN_STOP_PRICE", ContingentCondition::CC_AskPriceLesserThanStopPrice)
+    .value("ASK_PRICE_LESSER_EQUAL_STOP_PRICE", ContingentCondition::CC_AskPriceLesserEqualStopPrice)
+    .value("BID_PRICE_GREATER_THAN_STOP_PRICE", ContingentCondition::CC_BidPriceGreaterThanStopPrice)
+    .value("BID_PRICE_GREATER_EQUAL_STOP_PRICE", ContingentCondition::CC_BidPriceGreaterEqualStopPrice)
+    .value("BID_PRICE_LESSER_THAN_STOP_PRICE", ContingentCondition::CC_BidPriceLesserThanStopPrice)
+    .value("BID_PRICE_LESSER_EQUAL_STOP_PRICE", ContingentCondition::CC_BidPriceLesserEqualStopPrice);
 
   py::enum_<OrderActionFlag>(m, "OrderActionFlag")
-    .value("OAF_DELETE", OrderActionFlag::AF_Delete)
-    .value("OAF_MODIFY", OrderActionFlag::AF_Modify)
-    .export_values();
+    .value("DELETE", OrderActionFlag::AF_Delete)
+    .value("MODIFY", OrderActionFlag::AF_Modify);
 
   py::enum_<OrderStatus>(m, "OrderStatus")
-    .value("OST_ALL_TRADED", OrderStatus::OST_AllTraded)
-    .value("OST_PART_TRADED_QUEUEING", OrderStatus::OST_PartTradedQueueing)
-    .value("OST_PART_TRADED_NOT_QUEUEING", OrderStatus::OST_PartTradedNotQueueing)
-    .value("OST_NO_TRADE_QUEUEING", OrderStatus::OST_NoTradeQueueing)
-    .value("OST_NO_TRADE_NOT_QUEUEING", OrderStatus::OST_NoTradeNotQueueing)
-    .value("OST_CANCELED", OrderStatus::OST_Canceled)
-    .value("OST_UNKNOWN", OrderStatus::OST_Unknown)
-    .value("OST_NOT_TOUCHED", OrderStatus::OST_NotTouched)
-    .value("OST_TOUCHED", OrderStatus::OST_Touched)
-    .export_values();
+    .value("ALL_TRADED", OrderStatus::OST_AllTraded)
+    .value("PART_TRADED_QUEUEING", OrderStatus::OST_PartTradedQueueing)
+    .value("PART_TRADED_NOT_QUEUEING", OrderStatus::OST_PartTradedNotQueueing)
+    .value("NO_TRADE_QUEUEING", OrderStatus::OST_NoTradeQueueing)
+    .value("NO_TRADE_NOT_QUEUEING", OrderStatus::OST_NoTradeNotQueueing)
+    .value("CANCELED", OrderStatus::OST_Canceled)
+    .value("UNKNOWN", OrderStatus::OST_Unknown)
+    .value("NOT_TOUCHED", OrderStatus::OST_NotTouched)
+    .value("TOUCHED", OrderStatus::OST_Touched);
 
   py::enum_<OrderSubmitStatus>(m, "OrderSubmitStatus")
-    .value("OSS_INSERT_SUBMITTED", OrderSubmitStatus::OSS_InsertSubmitted)
-    .value("OSS_CANCEL_SUBMITTED", OrderSubmitStatus::OSS_CancelSubmitted)
-    .value("OSS_MODIFY_SUBMITTED", OrderSubmitStatus::OSS_ModifySubmitted)
-    .value("OSS_ACCEPTED", OrderSubmitStatus::OSS_Accepted)
-    .value("OSS_INSERT_REJECTED", OrderSubmitStatus::OSS_InsertRejected)
-    .value("OSS_CANCEL_REJECTED", OrderSubmitStatus::OSS_CancelRejected)
-    .value("OSS_MODIFY_REJECTED", OrderSubmitStatus::OSS_ModifyRejected)
-    .export_values();
+    .value("INSERT_SUBMITTED", OrderSubmitStatus::OSS_InsertSubmitted)
+    .value("CANCEL_SUBMITTED", OrderSubmitStatus::OSS_CancelSubmitted)
+    .value("MODIFY_SUBMITTED", OrderSubmitStatus::OSS_ModifySubmitted)
+    .value("ACCEPTED", OrderSubmitStatus::OSS_Accepted)
+    .value("INSERT_REJECTED", OrderSubmitStatus::OSS_InsertRejected)
+    .value("CANCEL_REJECTED", OrderSubmitStatus::OSS_CancelRejected)
+    .value("MODIFY_REJECTED", OrderSubmitStatus::OSS_ModifyRejected);
 
   py::enum_<OrderActionStatus>(m, "OrderActionStatus")
-    .value("OAS_SUBMITTED", OrderActionStatus::OAS_Submitted)
-    .value("OAS_ACCEPTED", OrderActionStatus::OAS_Accepted)
-    .value("OAS_REJECTED", OrderActionStatus::OAS_Rejected)
-    .export_values();
+    .value("SUBMITTED", OrderActionStatus::OAS_Submitted)
+    .value("ACCEPTED", OrderActionStatus::OAS_Accepted)
+    .value("REJECTED", OrderActionStatus::OAS_Rejected);
 
 #pragma endregion
+
+#pragma region Structs
 
   py::class_<CThostFtdcRspInfoField>(m, "ResponseInfo")
     .def_readonly("error_id", &CThostFtdcRspInfoField::ErrorID)
@@ -685,7 +676,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("broker_id", &CThostFtdcInvestorPositionDetailField::BrokerID)
     .def_readonly("investor_id", &CThostFtdcInvestorPositionDetailField::InvestorID)
     .def_property_readonly("hedge_flag", tostr_HedgeFlag<CThostFtdcInvestorPositionDetailField>)
-    .def_property_readonly("direction", toenum_Direction<CThostFtdcInvestorPositionDetailField>)
+    .def_property_readonly("direction", tostr_Direction<CThostFtdcInvestorPositionDetailField>)
     .def_readonly("open_date", &CThostFtdcInvestorPositionDetailField::OpenDate)
     .def_readonly("trade_id", &CThostFtdcInvestorPositionDetailField::TradeID)
     .def_readonly("volume", &CThostFtdcInvestorPositionDetailField::Volume)
@@ -717,7 +708,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("order_ref", &CThostFtdcInputOrderField::OrderRef)
     .def_readonly("user_id", &CThostFtdcInputOrderField::UserID)
     .def_property_readonly("order_price_type", tostr_OrderPriceType<CThostFtdcInputOrderField>)
-    .def_property_readonly("direction", toenum_Direction<CThostFtdcInputOrderField>)
+    .def_property_readonly("direction", tostr_Direction<CThostFtdcInputOrderField>)
     .def_property_readonly("combine_offset_flag", tolist_CombOffsetFlag<CThostFtdcInputOrderField>)
     .def_property_readonly("combine_hedge_flag", tolist_CombHedgeFlag<CThostFtdcInputOrderField>)
     .def_readonly("limit_price", &CThostFtdcInputOrderField::LimitPrice)
@@ -769,7 +760,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("instrument_id", &CThostFtdcOrderField::InstrumentID)
     .def_readonly("order_ref", &CThostFtdcOrderField::OrderRef)
     .def_property_readonly("price_type", tostr_OrderPriceType<CThostFtdcOrderField>)
-    .def_property_readonly("direction", toenum_Direction<CThostFtdcOrderField>)
+    .def_property_readonly("direction", tostr_Direction<CThostFtdcOrderField>)
     .def_property_readonly("combine_offset_flag", tolist_CombOffsetFlag<CThostFtdcOrderField>)
     .def_property_readonly("combine_hedge_flag", tolist_CombHedgeFlag<CThostFtdcOrderField>)
     .def_readonly("limit_price", &CThostFtdcOrderField::LimitPrice)
@@ -789,8 +780,8 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("exchange_inst_id", &CThostFtdcOrderField::ExchangeInstID)
     .def_readonly("trader_id", &CThostFtdcOrderField::TraderID)
     .def_readonly("install_id", &CThostFtdcOrderField::InstallID)
-    .def_property_readonly("status", tostr_OrderStatus<CThostFtdcOrderField>)
-    .def_property_readonly("submit_status", tostr_OrderSubmitStatus<CThostFtdcOrderField>)
+    .def_property_readonly("status", toenum_OrderStatus<CThostFtdcOrderField>)
+    .def_property_readonly("submit_status", toenum_OrderSubmitStatus<CThostFtdcOrderField>)
     .def_readonly("notify_sequence", &CThostFtdcOrderField::NotifySequence)
     .def_readonly("trading_day", &CThostFtdcOrderField::TradingDay)
     .def_readonly("settlement_id", &CThostFtdcOrderField::SettlementID)
@@ -833,7 +824,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("user_id", &CThostFtdcTradeField::UserID)
     .def_readonly("exchange_id", &CThostFtdcTradeField::ExchangeID)
     .def_readonly("trade_id", &CThostFtdcTradeField::TradeID)
-    .def_property_readonly("direction", toenum_Direction<CThostFtdcTradeField>)
+    .def_property_readonly("direction", tostr_Direction<CThostFtdcTradeField>)
     .def_readonly("order_sys_id", &CThostFtdcTradeField::OrderSysID)
     .def_readonly("participant_id", &CThostFtdcTradeField::ParticipantID)
     .def_readonly("client_id", &CThostFtdcTradeField::ClientID)
@@ -880,7 +871,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("participant_id", &CThostFtdcOrderActionField::ParticipantID)
     .def_readonly("client_id", &CThostFtdcOrderActionField::ClientID)
     .def_readonly("business_unit", &CThostFtdcOrderActionField::BusinessUnit)
-    .def_property_readonly("order_action_status", tostr_OrderActionStatus<CThostFtdcOrderActionField>)
+    .def_property_readonly("order_action_status", toenum_OrderActionStatus<CThostFtdcOrderActionField>)
     .def_readonly("user_id", &CThostFtdcOrderActionField::UserID)
     .def_property_readonly("status_msg", [](CThostFtdcOrderActionField const *this_) { return py::bytes(this_->StatusMsg); })
     .def_readonly("instrument_id", &CThostFtdcOrderActionField::InstrumentID)
@@ -890,6 +881,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("mac_address", &CThostFtdcOrderActionField::MacAddress)
     ;
 
+#pragma endregion
 
   py::class_<CtpClient, CtpClientWrap>(m, "CtpClient")
     .def(py::init<const std::string&, const std::string&, const std::string&, const std::string&, const std::string&>(),

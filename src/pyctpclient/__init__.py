@@ -29,46 +29,46 @@ from .ctpclient import (
 )
 
 # Enums
-from .ctpclient import (
-    D_BUY,
-    D_SELL,
+from .ctpclient import Direction, OffsetFlag, OrderStatus, OrderSubmitStatus, OrderActionStatus
+D_BUY = Direction.BUY
+D_SELL = Direction.SELL
 
-    OF_OPEN,
-    OF_CLOSE,
-    OF_FORCE_CLOSE,
-    OF_CLOSE_TODAY,
-    OF_CLOSE_YESTERDAY,
-    OF_FORCE_OFF,
-    OF_LOCAL_FORCE_CLOSE,
+OF_OPEN = OffsetFlag.OPEN
+OF_CLOSE = OffsetFlag.CLOSE
+OF_FORCE_CLOSE = OffsetFlag.FORCE_CLOSE
+OF_CLOSE_TODAY = OffsetFlag.CLOSE_TODAY
+OF_CLOSE_YESTERDAY = OffsetFlag.CLOSE_YESTERDAY
+OF_FORCE_OFF = OffsetFlag.FORCE_OFF
+OF_LOCAL_FORCE_CLOSE = OffsetFlag.LOCAL_FORCE_CLOSE
 
-    OST_ALL_TRADED,
-    OST_PART_TRADED_QUEUEING,
-    OST_PART_TRADED_NOT_QUEUEING,
-    OST_NO_TRADE_QUEUEING,
-    OST_NO_TRADE_NOT_QUEUEING,
-    OST_CANCELED,
-    OST_UNKNOWN,
-    OST_NOT_TOUCHED,
-    OST_TOUCHED,
+OST_ALL_TRADED = OrderStatus.ALL_TRADED
+OST_PART_TRADED_QUEUEING = OrderStatus.PART_TRADED_QUEUEING
+OST_PART_TRADED_NOT_QUEUEING = OrderStatus.PART_TRADED_NOT_QUEUEING
+OST_NO_TRADE_QUEUEING = OrderStatus.NO_TRADE_QUEUEING
+OST_NO_TRADE_NOT_QUEUEING = OrderStatus.NO_TRADE_NOT_QUEUEING
+OST_CANCELED = OrderStatus.CANCELED
+OST_UNKNOWN = OrderStatus.UNKNOWN
+OST_NOT_TOUCHED = OrderStatus.NOT_TOUCHED
+OST_TOUCHED = OrderStatus.TOUCHED
 
-    OSS_INSERT_SUBMITTED,
-    OSS_CANCEL_SUBMITTED,
-    OSS_MODIFY_SUBMITTED,
-    OSS_ACCEPTED,
-    OSS_INSERT_REJECTED,
-    OSS_CANCEL_REJECTED,
-    OSS_MODIFY_REJECTED,
+OSS_INSERT_SUBMITTED = OrderSubmitStatus.INSERT_SUBMITTED
+OSS_CANCEL_SUBMITTED = OrderSubmitStatus.CANCEL_SUBMITTED
+OSS_MODIFY_SUBMITTED = OrderSubmitStatus.MODIFY_SUBMITTED
+OSS_ACCEPTED = OrderSubmitStatus.ACCEPTED
+OSS_INSERT_REJECTED = OrderSubmitStatus.INSERT_REJECTED
+OSS_CANCEL_REJECTED = OrderSubmitStatus.CANCEL_REJECTED
+OSS_MODIFY_REJECTED = OrderSubmitStatus.MODIFY_REJECTED
 
-    OAS_SUBMITTED,
-    OAS_ACCEPTED,
-    OAS_REJECTED
-)
-from .ctpclient import Direction, OffsetFlag
+OAS_SUBMITTED = OrderActionStatus.SUBMITTED
+OAS_ACCEPTED = OrderActionStatus.ACCEPTED
+OAS_REJECTED = OrderActionStatus.REJECTED
 
 __version__ = "0.3.0a0"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):
+    direction_dict = {'buy': D_BUY, 'sell': D_SELL}
+    offset_flag_dict = {'open': OF_OPEN, 'close': OF_CLOSE, 'close_today': OF_CLOSE_TODAY, 'close_yesterday': OF_CLOSE_YESTERDAY}
 
     def __init__(self, md_address, td_address, broker_id, user_id, password):
         _CtpClient.__init__(self, md_address, td_address, broker_id, user_id, password)
@@ -191,5 +191,17 @@ class CtpClient(_CtpClient):
     def on_idle(self):
         pass
 
-    def insert_order(self, instrument_id: str, direction: Direction, offset_flag: OffsetFlag, price: float, volume: int, **kwargs):
+    def insert_order(self, instrument_id: str, direction, offset_flag, price: float, volume: int, **kwargs):
+        if isinstance(direction, str):
+            if direction.lower() in self.direction_dict:
+                direction = self.direction_dict[direction.lower()]
+            else:
+                raise ValueError("Invalid direction: %s" % direction)
+
+        if isinstance(offset_flag, str):
+            if offset_flag.lower() in self.offset_flag_dict:
+                offset_flag = self.offset_flag_dict[offset_flag.lower()]
+            else:
+                raise ValueError("Invalid offset_flag: %s" % offset_flag)
+
         _CtpClient.insert_order(self, instrument_id, direction, offset_flag, price, volume, **kwargs)

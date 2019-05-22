@@ -141,7 +141,9 @@ class Client(CtpClient):
         self.log.info('on_rsp_order')
         if order is not None:
             # 获取 Order 的信息，或者保存这个 Order
-            pass
+            self.log.info("direction: %s", order.direction)
+            self.log.info("order status: %s", order.status)
+            self.log.info("order submit status: %s", order.submit_status)
 
     def on_rsp_trade(self, trade, rsp_info, is_last):
         """`query_trade` 的数据回传函数。请不要保存 `trade`，只能保存其中的数据。
@@ -153,7 +155,7 @@ class Client(CtpClient):
         if trade is not None:
             # 在当前交易日没有成效记录的时候，trade 是 None
             pass
-            
+
     def on_rsp_market_data(self, data, rsp_info, request_id, is_last):
         """`query_market_data` 的数据回传函数。请不要保存 `data`，只能保存其中的数据。
 
@@ -167,7 +169,10 @@ class Client(CtpClient):
 
         :type order: pyctpclient.ctpclient.Order
         """
-        pass
+        self.log.info("direction: %s", order.direction)
+        self.log.info("order status: %s", order.status)
+        self.log.info("order submit status: %s", order.submit_status)
+        self.log.info("request_id: %d", order.request_id)
 
     def on_rtn_trade(self, trade):
         """报单成交回传函数。
@@ -197,9 +202,10 @@ class Client(CtpClient):
         """空闲回传函数。当数据队列中没有数据需要处理，并且延迟大于 `idle_delay` 时调用
         """
         self.counter += 1
-        if self.counter > 30:
-            self.log.info("Exit")
-            self.exit()
+        if self.counter > 10:
+            self.insert_order("IF1906", "buy", "open", 3700, 1, request_id=10)
+            self.counter = 0
+            self.log.info("Insert Order")
 
 
 if __name__ == "__main__":

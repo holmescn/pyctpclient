@@ -55,7 +55,7 @@ class Client(CtpClient):
         volume = 1
         if self.direction is not None and self.direction == D_BUY and not self.trading:
             price = data.price + self.move
-            key = (data.instrument_id, 'long')
+            key = (data.instrument_id, 'short')
             if key in self.position and self.position[key] > 0:
                 self.insert_order(data.instrument_id, self.direction, OF_CLOSE_YESTERDAY, price, volume)
                 self.log.info("insert order buy close_yesterday %.2f", price)
@@ -66,7 +66,7 @@ class Client(CtpClient):
 
         if self.direction is not None and self.direction == D_SELL and not self.trading:
             price = data.price - self.move
-            key = (data.instrument_id, 'short')
+            key = (data.instrument_id, 'long')
             if key in self.position and self.position[key] > 0:
                 self.insert_order(data.instrument_id, self.direction, OF_CLOSE_YESTERDAY, price, volume)
                 self.log.info("insert order sell close_yesterday %.2f", price)

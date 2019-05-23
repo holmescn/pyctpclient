@@ -342,7 +342,7 @@ public:
     void QueryTradingAccount();
     void QueryInvestorPosition();
     void QueryInvestorPositionDetail();
-    void QueryMarketData(std::string instrumentId, int requestId);
+    void QueryMarketData(const std::string &instrumentId, int requestId);
 
     void TdLogin();
     void ConfirmSettlementInfo();

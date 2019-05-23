@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.3.1a0
+
+1. FIX: `query_market_data` response segment fault.
+
 ## 0.3.0a0
 
 1. Use pybind11 instead of boost.python

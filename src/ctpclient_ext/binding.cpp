@@ -524,7 +524,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_readonly("upper_limit_price", &CThostFtdcDepthMarketDataField::UpperLimitPrice)
     .def_readonly("lower_limit_price", &CThostFtdcDepthMarketDataField::LowerLimitPrice)
     .def_readonly("pre_delta", &CThostFtdcDepthMarketDataField::PreDelta)
-    .def_readonly("curr_delta", &CThostFtdcDepthMarketDataField::CurrDelta)
+    .def_readonly("current_delta", &CThostFtdcDepthMarketDataField::CurrDelta)
     .def_readonly("update_time", &CThostFtdcDepthMarketDataField::UpdateTime)
     .def_readonly("update_millisec", &CThostFtdcDepthMarketDataField::UpdateMillisec)
     .def_readonly("bid_price1", &CThostFtdcDepthMarketDataField::BidPrice1)

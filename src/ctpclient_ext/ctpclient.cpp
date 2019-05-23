@@ -623,7 +623,7 @@ void CtpClient::QueryInvestorPositionDetail()
     _requestQueue.enqueue(r);
 }
 
-void CtpClient::QueryMarketData(std::string instrumentId, int nRequestID)
+void CtpClient::QueryMarketData(const std::string &instrumentId, int nRequestID)
 {
     CtpClient::Request r;
     memset(&r, 0, sizeof r);

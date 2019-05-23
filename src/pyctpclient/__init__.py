@@ -63,7 +63,7 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.0a0"
+__version__ = "0.3.1a0"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):
@@ -113,11 +113,11 @@ class CtpClient(_CtpClient):
         self.log.info("MarketData logged out.")
 
     def on_subscribe_market_data(self, info, rsp_info, is_last):
-        if rsp_info.error_id == 0:
+        if info is not None:
             self.log.info("Market data of %s is subscribed" % info.instrument_id)
 
     def on_unsubscribe_market_data(self, info, rsp_info, is_last):
-        if rsp_info.error_id == 0:
+        if info is not None:
             self.log.info("Market data of %s market data is unsubscribed" % info.instrument_id)
 
     def on_rtn_market_data(self, data: MarketData):
@@ -137,7 +137,7 @@ class CtpClient(_CtpClient):
         self.td_login()
 
     def on_td_front_disconnected(self, reason):
-        self.log.info("Trader front disconnected")
+        self.log.info("Trader front disconnected: %d", reason)
 
     def on_td_user_login(self, user_login_info, rsp_info):
         if rsp_info.error_id == 0:

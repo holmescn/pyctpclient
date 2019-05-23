@@ -122,14 +122,7 @@ void TraderSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInves
 
 void TraderSpi::OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-    CtpClient::Response r;
-    r.Init(CtpClient::ResponseType::OnRspQryDepthMarketData, pRspInfo, nRequestID, bIsLast);
-    if (pDepthMarketData) {
-        memcpy(&r.base, pDepthMarketData, sizeof r.DepthMarketData);
-    } else if (pRspInfo->ErrorID == 0) {
-        r.RspInfo.ErrorID = 16;
-    }
-    _client->Enqueue(r);
+    _client->Enqueue(CtpClient::ResponseType::OnRspQryDepthMarketData, pDepthMarketData, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspQryInvestorPositionDetail(CThostFtdcInvestorPositionDetailField *pInvestorPositionDetail, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)

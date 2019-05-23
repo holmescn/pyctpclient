@@ -37,13 +37,6 @@ class Client(CtpClient):
 
     def on_md_front_disconnected(self, reason):
         """MarketData 前置断开连接时会调用此函数。断开后，系统会尝试重新连接。
-
-        :param nReason:
-	        0x1001 网络读失败(4097)
-	        0x1002 网络写失败(4098)
-	        0x2001 接收心跳超时(8193)
-	        0x2002 发送心跳失败(8194)
-	        0x2003 收到错误报文(8195)
         """
         self.exit()
 
@@ -114,6 +107,7 @@ class Client(CtpClient):
         :type trading_account: pyctpclient.ctpclient.TradingAccount
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
+        # 可用资金
         self.available = trading_account.available
 
     def on_rsp_investor_position(self, investor_position, rsp_info, is_last):
@@ -123,7 +117,14 @@ class Client(CtpClient):
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
         if investor_position is not None:
-            self.position[(investor_position.instrument_id, investor_position.position_direction)] = investor_position.position - investor_position.today_position
+            # 昨持仓 = 现持仓 - 今日持仓
+            yd_position = investor_position.position - investor_position.today_position
+            key = (investor_position.instrument_id, investor_position.position_direction)
+            self.position[key] = yd_position
+        elif rsp_info is not None:
+            self.log.error("query investor position failed: %d", rsp_info.error_id)
+        else:
+            self.log.info("No investor position yet.")
 
     def on_rsp_order(self, order, rsp_info, is_last):
         """`query_order` 的数据回传函数。
@@ -133,14 +134,18 @@ class Client(CtpClient):
         """
         if order is not None and order.status not in (OST_ALL_TRADED, OST_CANCELED):
             self.delete_order(order)
+        elif rsp_info is not None:
+            self.log.error("query order failed: %d", rsp_info.error_id)
+        else:
+            self.log.info("No order yet.")
 
     def on_rtn_order(self, order):
         """报单状态回传函数。当报单状态 `order.status` 或者 `order.submit_status` 变化时，
 
         :type order: pyctpclient.ctpclient.Order
         """
-        self.log.info("%s %s", order.submit_status, order.status)
-        if order.status == OST_ALL_TRADED:
+        self.log.info("%s %s", order.submit_status.name, order.status.name)
+        if order.status == OST_ALL_TRADED or order.status == OST_CANCELED:
             self.trading = False
 
     def on_rtn_trade(self, trade):
@@ -172,9 +177,9 @@ class Client(CtpClient):
         """空闲回传函数。当数据队列中没有数据需要处理，并且延迟大于 `idle_delay` 时调用
         """
         if self.order is not None:
-            d = datetime.strptime('%s %s' % (self.order.insert_date, self.order.insert_time), "%Y-%m-%d %H:%M:%S")
-            dt = datetime.now() - d
-            if dt.second > 10:
+            dt = datetime.strptime('%s %s' % (self.order.insert_date, self.order.insert_time), "%Y-%m-%d %H:%M:%S")
+            diff = datetime.now() - dt
+            if diff.second > 10:
                 self.delete_order(order)
 
 

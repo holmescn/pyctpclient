@@ -118,11 +118,15 @@ class Client(CtpClient):
         :type investor_position: pyctpclient.ctpclient.InvestorPosition
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        self.log.info("on_rsp_investor_position")
-        self.log.info("direction %s", str(investor_position.position_direction))
-        self.log.info("position: %.2f", investor_position.position)
-        self.log.info("today position: %.2f", investor_position.today_position)
-        self.log.info("yd position: %.2f", investor_position.position - investor_position.today_position)
+        if investor_position is not None:
+            self.log.info("direction %s", str(investor_position.position_direction))
+            self.log.info("position: %.2f", investor_position.position)
+            self.log.info("today position: %.2f", investor_position.today_position)
+            self.log.info("yd position: %.2f", investor_position.position - investor_position.today_position)
+        elif rsp_info is not None:
+            self.log.error("query investor position failed: %d", rsp_info.error_id)
+        else:
+            self.log.info("No investor position yet.")
 
     def on_rsp_investor_position_detail(self, investor_position_detail, rsp_info, is_last):
         """`query_investor_position_detail` 的数据回传函数。请不要保存 `investor_position_detail`，只能保存其中的数据。
@@ -144,6 +148,10 @@ class Client(CtpClient):
             self.log.info("direction: %s", order.direction)
             self.log.info("order status: %s", order.status)
             self.log.info("order submit status: %s", order.submit_status)
+        elif rsp_info is not None:
+            self.log.error("query order failed: %d", rsp_info.error_id)
+        else:
+            self.log.info("No order yet.")
 
     def on_rsp_trade(self, trade, rsp_info, is_last):
         """`query_trade` 的数据回传函数。请不要保存 `trade`，只能保存其中的数据。
@@ -151,10 +159,13 @@ class Client(CtpClient):
         :type trade: pyctpclient.ctpclient.Trade
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        self.log.info('on_rsp_trade')
         if trade is not None:
             # 在当前交易日没有成效记录的时候，trade 是 None
-            pass
+            self.log.info('traded: %s', trade.instrument_id)
+        elif rsp_info is not None:
+            self.log.error("query trade failed: %d", rsp_info.error_id)
+        else:
+            self.log.error("No trade today.")
 
     def on_rsp_market_data(self, data, rsp_info, request_id, is_last):
         """`query_market_data` 的数据回传函数。请不要保存 `data`，只能保存其中的数据。
@@ -162,7 +173,7 @@ class Client(CtpClient):
         :type data: pyctpclient.ctpclient.MarketData
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        self.log.info("instrument_id: %s", data.instrument_id)
+        self.log.info("rsp_market_data: %s", data.instrument_id)
 
     def on_rtn_order(self, order):
         """报单状态回传函数。当报单状态 `order.status` 或者 `order.submit_status` 变化时，
@@ -179,7 +190,7 @@ class Client(CtpClient):
 
         :type trade: pyctpclient.ctpclient.Trade
         """
-        pass
+        self.log.info("Traded: %d", trade.instrument_id)
 
     def on_err_order_insert(self, input_order, rsp_info):
         """报单失败回传函数。这里主要是通过检查 `rsp_info.error_id` 的值来确定错误原因。
@@ -187,7 +198,8 @@ class Client(CtpClient):
         :type input_order: pyctpclient.ctpclient.InputOrder
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        pass
+        if rsp_info is not None:
+            self.log.error("Insert order failed: %d", rsp_info.error_id)
 
     def on_err_order_action(self, input_order_action, order_action, rsp_info):
         """撤单/改单失败回传函数。这里主要是通过检查 `rsp_info.error_id` 的值来确定错误原因。
@@ -196,7 +208,8 @@ class Client(CtpClient):
         :type order_action: pyctpclient.ctpclient.OrderAction
         :type rsp_info: pyctpclient.ctpclient.ResponseInfo
         """
-        pass
+        if rsp_info is not None:
+            self.log.error("Request order action failed: %d", rsp_info.error_id)
 
     def on_idle(self):
         """空闲回传函数。当数据队列中没有数据需要处理，并且延迟大于 `idle_delay` 时调用

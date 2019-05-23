@@ -1,2 +1,9 @@
-# pyctpclient
-Python CTP client.
+pyctpclient
+=============
+
+这是一个针对期货交易场景简化了的 CTP pythong binding. 相比 vn.py，本项目
+没有过多的对于外部库的依赖（比如 PyQt, mongodb 等），适合作为独立交易策略
+运行在一个独立的程序中。
+
+由于 CTP 接口的复杂性，本程序没有提供详细的接口文档，具体的使用方式，请参考
+`example` 下的两个例程。

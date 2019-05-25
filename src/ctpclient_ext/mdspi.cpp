@@ -122,8 +122,8 @@ void MdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketDat
         m1Bar.TickVolume = pDepthMarketData->Volume;
         m1Bar.TickTurnover = pDepthMarketData->Turnover;
         m1Bar.Position = pDepthMarketData->OpenInterest;
-        m1Bar.Volume = m1Bar.TickVolume > m1Bar.BaseVolume ? m1Bar.TickVolume - m1Bar.BaseVolume : m1Bar.TickVolume;
-        m1Bar.Turnover = m1Bar.TickTurnover > m1Bar.BaseTurnover ? m1Bar.TickTurnover - m1Bar.BaseTurnover : m1Bar.TickTurnover;
+        m1Bar.Volume = m1Bar.TickVolume >= m1Bar.BaseVolume ? m1Bar.TickVolume - m1Bar.BaseVolume : m1Bar.TickVolume;
+        m1Bar.Turnover = m1Bar.TickTurnover >= m1Bar.BaseTurnover ? m1Bar.TickTurnover - m1Bar.BaseTurnover : m1Bar.TickTurnover;
 
         memcpy(&prev, &m1Bar, sizeof m1Bar);
     }

@@ -1,8 +1,9 @@
 # pyctpclient Change History
 
-## 0.3.1a0
+## 0.3.1a1
 
 1. FIX: `query_market_data` response segment fault.
+2. FIX: 1 minute bar volume/turnover compute error.
 
 ## 0.3.0a0
 

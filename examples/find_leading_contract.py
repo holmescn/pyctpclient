@@ -2,7 +2,6 @@
 import re
 from pyctpclient import CtpClient
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 
 
 class Client(CtpClient):
@@ -13,17 +12,21 @@ class Client(CtpClient):
     def on_settlement_info_confirm(self, confirm, rsp_info):
         contract_prefix = [
             "IF", "IC", "IH",
-            "a",  "ag", "al", "au",  "b", "bb", "bu",  "c", "cu", "cs",
+            "a",  "ag", "al", "au",  "b", "bu",  "c", "cu", "cs",
             "fu", "fb", "hc",  "i",  "j", "jd", "jm",  "l",  "m", "ni",
              "p", "pp", "pb", "ru", "rb", "sn", "sp", "sc", "wr", "zn",
         ]
         for c in contract_prefix:
             today = datetime.today()
+            year = today.year % 2000
             for m in range(12):
-                d = today + relativedelta(months=m)
-                instrument_id = d.strftime(c + "%y%m")
+                month = today.month + m
+                instrument_id = "%s%02d%02d" % (c, year, month % 12 if month % 12 > 0 else 12)
+                self.log.info("query %s" % instrument_id)
                 self.query_market_data(instrument_id)
                 self.counter += 1
+                if month % 12 == 0:
+                    year += 1
 
     def on_rsp_market_data(self, data, rsp_info, request_id, is_last):
         if data is not None:
@@ -33,7 +36,7 @@ class Client(CtpClient):
             if instrument not in self.leading_contracts:
                 self.leading_contracts[instrument] = [t]
             else:
-                self.leading_contracts[instrument].append(t)                
+                self.leading_contracts[instrument].append(t)
 
         self.counter -= 1
         if self.counter == 0:
@@ -56,8 +59,8 @@ if __name__ == "__main__":
     # 创建 CTP Client 实例
     c = Client(
         # 实盘/电信1
-        #md_address="tcp://180.168.146.187:10010",
-        #td_address="tcp://180.168.146.187:10000",
+        md_address="tcp://180.168.146.187:10010",
+        td_address="tcp://180.168.146.187:10000",
         # 实盘/电信2
         #md_address="tcp://180.168.146.187:10011",
         #td_address="tcp://180.168.146.187:10001",
@@ -65,8 +68,8 @@ if __name__ == "__main__":
         #md_address="tcp://218.202.237.33:10012",
         #td_address="tcp://218.202.237.33:10002",
         # 开发
-        md_address="",
-        td_address="tcp://180.168.146.187:10030",
+        #md_address="",
+        #td_address="tcp://180.168.146.187:10030",
         broker_id="9999",
         user_id="",
         password=""

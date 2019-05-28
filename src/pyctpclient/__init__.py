@@ -63,7 +63,7 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.1b1"
+__version__ = "0.3.2b0"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):
@@ -205,3 +205,6 @@ class CtpClient(_CtpClient):
                 raise ValueError("Invalid offset_flag: %s" % offset_flag)
 
         _CtpClient.insert_order(self, instrument_id, direction, offset_flag, price, volume, **kwargs)
+
+    def delete_order(self, order, request_id=0):
+        _CtpClient.delete_order(self, order, request_id)

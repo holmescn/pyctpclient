@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.3.2b0
+
+1. `delete_order` make `request_id` having a default value.
+
 ## 0.3.1a1
 
 1. FIX: `query_market_data` response segment fault.

@@ -17,6 +17,7 @@ import logging
 from tempfile import mkdtemp
 from shutil import rmtree
 from .ctpclient import CtpClient as _CtpClient
+from .ctpclient import RequestError
 
 # Data Structs
 from .ctpclient import (
@@ -63,7 +64,7 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.2b0"
+__version__ = "0.3.3b0"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):

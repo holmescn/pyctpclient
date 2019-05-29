@@ -345,6 +345,7 @@ OrderActionStatus toenum_OrderActionStatus(T const* this_)
 #pragma endregion // Getters
 
 PYBIND11_MODULE(ctpclient, m) {
+    py::register_exception<std::runtime_error>(m, "RequestError");
 
 #pragma region Enums
 

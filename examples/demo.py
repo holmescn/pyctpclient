@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from pyctpclient import CtpClient
+from pyctpclient import RequestError
 from pyctpclient import (
     D_BUY, D_SELL, OF_OPEN, OF_CLOSE, OF_CLOSE_TODAY, OF_CLOSE_YESTERDAY,
 
@@ -216,17 +217,20 @@ class Client(CtpClient):
         """
         self.counter += 1
         if self.counter > 10:
-            self.insert_order("IF1906", "buy", "open", 3700, 1, request_id=10)
-            self.counter = 0
-            self.log.info("Insert Order")
+            try:
+                self.insert_order("IF1906", "buy", "open", 3700, 1, request_id=10)
+                self.counter = 0
+                self.log.info("Insert Order")
+            except RequestError:
+                self.log.error("insert order failed")
 
 
 if __name__ == "__main__":
     # 创建 CTP Client 实例
     c = Client(
         # 实盘/电信1
-        #md_address="tcp://180.168.146.187:10010",
-        #td_address="tcp://180.168.146.187:10000",
+        md_address="tcp://180.168.146.187:10010",
+        td_address="tcp://180.168.146.187:10000",
         # 实盘/电信2
         #md_address="tcp://180.168.146.187:10011",
         #td_address="tcp://180.168.146.187:10001",
@@ -234,8 +238,8 @@ if __name__ == "__main__":
         #md_address="tcp://218.202.237.33:10012",
         #td_address="tcp://218.202.237.33:10002",
         # 开发
-        md_address="tcp://180.168.146.187:10031",
-        td_address="tcp://180.168.146.187:10030",
+        #md_address="tcp://180.168.146.187:10031",
+        #td_address="tcp://180.168.146.187:10030",
         broker_id="9999",
         user_id="",
         password=""

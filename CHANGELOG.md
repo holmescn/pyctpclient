@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.3.3b0
+
+1. Register `std::runtime_error` as `RequestError`
+
 ## 0.3.2b0
 
 1. `delete_order` make `request_id` having a default value.

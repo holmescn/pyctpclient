@@ -224,6 +224,9 @@ class Client(CtpClient):
             except RequestError:
                 self.log.error("insert order failed")
 
+    def on_exception(self, message):
+        pass
+
 
 if __name__ == "__main__":
     # 创建 CTP Client 实例

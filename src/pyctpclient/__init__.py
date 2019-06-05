@@ -64,7 +64,7 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.4b1"
+__version__ = "0.3.4b2"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):

@@ -1,6 +1,6 @@
 # pyctpclient Change History
 
-## 0.3.4b0
+## 0.3.4b2
 
 1. Add `on_exception` callback.
 

@@ -85,6 +85,7 @@ void CtpClient::_assertRequest(int rc, const char *request)
             OnException(ss.str());
             break;
         }
+        _requestResponsed.store(true, std::memory_order_release);
     }
 }
 

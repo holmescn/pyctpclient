@@ -69,17 +69,21 @@ void CtpClient::_assertRequest(int rc, const char *request)
             // 因网络原因发送失败
             ss << "network error.";
             OnException(ss.str());
+            break;
         case -2:
             // 未处理请求队列总数量超限
             ss << "excessing the limit of request queue.";
             OnException(ss.str());
+            break;
         case -3:
             // 每秒发送请求数量超限
             ss << "too frequently request.";
             OnException(ss.str());
+            break;
         default:
             ss << "unknown reason: " << rc;
             OnException(ss.str());
+            break;
         }
     }
 }

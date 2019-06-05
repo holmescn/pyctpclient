@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.3.4b0
+
+1. Add `on_exception` callback.
+
 ## 0.3.3b0
 
 1. Register `std::runtime_error` as `RequestError`

@@ -145,6 +145,9 @@ class CtpClient
     std::string _brokerId;
     std::string _userId;
     std::string _password;
+    std::string _appId;
+    std::string _authCode;
+    std::string _userProductInfo;
     std::thread _thread;
     size_t _idleDelay = 1000;
 
@@ -270,6 +273,7 @@ class CtpClient
     void Enqueue(ResponseType type, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
     void Enqueue(const CtpClient::Response &r);
 
+    void _assertRequest(int rc, const char *request);
     friend class MdSpi;
     friend class TraderSpi;
 protected:
@@ -301,6 +305,12 @@ public:
     inline void SetUserId(std::string userId) { _userId = userId; }
     inline std::string GetPassword() const { return _password; }
     inline void SetPassword(std::string password) { _password = password; }
+    inline std::string GetAppId() const { return _appId; }
+    inline void SetAppId(std::string appId) { _appId = appId; }
+    inline std::string GetUserProductInfo() const { return _userProductInfo; }
+    inline void SetUserProductInfo(std::string userProductInfo) { _userProductInfo = userProductInfo; }
+    inline std::string GetAuthCode() const { return _authCode; }
+    inline void SetAuthCode(std::string authCode) { _authCode = authCode; }
     inline const std::vector<std::string>& GetInstrumentIds() const { return _instrumentIds; }
     inline void SetInstrumentIds(const std::vector<std::string> &instrumentIds) {
         _instrumentIds.clear();
@@ -333,6 +343,7 @@ public:
     virtual void On1MinTick(std::shared_ptr<M1Bar> pBar) = 0;
 	virtual void OnMdError(const CThostFtdcRspInfoField *pRspInfo) = 0;
 
+    virtual void OnException(const std::string &message) = 0;
     virtual void OnIdle() = 0;
 
 public:
@@ -422,4 +433,5 @@ struct CtpClientWrap : CtpClient
     void OnRspQryDepthMarketData(const CThostFtdcDepthMarketDataField *pDepthMarketData, const CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) override;
 
     void OnIdle() override;
+    void OnException(const std::string &message) override;
 };

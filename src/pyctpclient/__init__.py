@@ -64,7 +64,7 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.3b0"
+__version__ = "0.3.4b0"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):
@@ -191,6 +191,9 @@ class CtpClient(_CtpClient):
 
     def on_idle(self):
         pass
+
+    def on_exception(self, message):
+        self.log.error("Exception: %s", message)
 
     def insert_order(self, instrument_id: str, direction, offset_flag, price: float, volume: int, **kwargs):
         if isinstance(direction, str):

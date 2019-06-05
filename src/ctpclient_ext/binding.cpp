@@ -940,5 +940,6 @@ PYBIND11_MODULE(ctpclient, m) {
     .def("on_rsp_investor_position_detail", &CtpClient::OnRspQryInvestorPositionDetail)
     .def("on_rsp_market_data", &CtpClient::OnRspQryDepthMarketData)
     .def("on_idle", &CtpClient::OnIdle)
+    .def("on_exception", &CtpClient::OnException)
     ;
 };

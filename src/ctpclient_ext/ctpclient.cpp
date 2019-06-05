@@ -38,33 +38,6 @@ void signal_handler(int signal)
 
 #define assert_request(request) _assertRequest((request), #request)
 
-void _assertRequest(int rc, const char *request)
-{
-    if (rc == 0) {
-        // 发送成功
-    } else {
-        std::stringstream ss;
-        ss << request << " failed because of ";
-        switch (rc) {
-        case -1:
-            // 因网络原因发送失败
-            ss << "network error.";
-            throw std::runtime_error(ss.str());
-        case -2:
-            // 未处理请求队列总数量超限
-            ss << "excessing the limit of request queue.";
-            throw std::runtime_error(ss.str());
-        case -3:
-            // 每秒发送请求数量超限
-            ss << "too frequently request.";
-            throw std::runtime_error(ss.str());
-        default:
-            ss << "unknown reason: " << rc;
-            throw std::runtime_error(ss.str());
-        }
-    }
-}
-
 #pragma region General functions
 
 CtpClient::CtpClient(const std::string &mdAddr, const std::string &tdAddr, const std::string &brokerId, const std::string &userId, const std::string &password)
@@ -81,6 +54,33 @@ CtpClient::~CtpClient()
 
     if (_tdSpi) {
         delete _tdSpi;
+    }
+}
+
+void CtpClient::_assertRequest(int rc, const char *request)
+{
+    if (rc == 0) {
+        // 发送成功
+    } else {
+        std::stringstream ss;
+        ss << request << " failed because of ";
+        switch (rc) {
+        case -1:
+            // 因网络原因发送失败
+            ss << "network error.";
+            OnException(ss.str());
+        case -2:
+            // 未处理请求队列总数量超限
+            ss << "excessing the limit of request queue.";
+            OnException(ss.str());
+        case -3:
+            // 每秒发送请求数量超限
+            ss << "too frequently request.";
+            OnException(ss.str());
+        default:
+            ss << "unknown reason: " << rc;
+            OnException(ss.str());
+        }
     }
 }
 
@@ -985,5 +985,19 @@ void CtpClientWrap::OnIdle()
         CtpClient,
         "on_idle",
         OnIdle
+    );
+}
+
+void CtpClientWrap::OnException(const std::string &message)
+{
+    /* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,        /* Return type */
+        CtpClient,
+        "on_exception",
+        OnException,
+        message
     );
 }

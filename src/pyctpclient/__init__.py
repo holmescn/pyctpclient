@@ -17,7 +17,6 @@ import logging
 from tempfile import mkdtemp
 from shutil import rmtree
 from .ctpclient import CtpClient as _CtpClient
-from .ctpclient import RequestError
 
 # Data Structs
 from .ctpclient import (

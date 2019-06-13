@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from pyctpclient import CtpClient
-from pyctpclient import RequestError
 from pyctpclient import (
     D_BUY, D_SELL, OF_OPEN, OF_CLOSE, OF_CLOSE_TODAY, OF_CLOSE_YESTERDAY,
 
@@ -18,13 +17,15 @@ from pyctpclient import (
     OSS_INSERT_REJECTED,
     OSS_CANCEL_REJECTED
 )
+from pyctpclient.ctpclient import OrderPriceType
 
 
 class Client(CtpClient):
     tick = None
     m1 = None
     m1_tick = None
-    counter = 0
+    is_trading = False
+    direction = D_BUY
 
     def init(self):
         """初始化 CTP API/SPI，切记不要忘了调用 `super` 的 `init`。
@@ -56,9 +57,10 @@ class Client(CtpClient):
 
         :type data: pyctpclient.ctpclient.TickBar
         """
-        # 报单
-        # self.insert_order(data.instrument_id, D_BUY, OF_OPEN, data.price + 1, 1, request_id=10)
         self.tick = data
+        if self.is_trading:
+            self.insert_order(data.instrument_id, self.direction, 'open', data.price + 1, 1, order_price_type=OrderPriceType.AnyPrice)
+            self.is_trading = False
 
     def on_1min(self, data):
         """MarketData 数据回传函数，由 tick 数据合成的 1 分钟数据，在下一个一分钟开始的时候，传回上一个
@@ -101,6 +103,7 @@ class Client(CtpClient):
         # 这个函数一般不会在交易的时候使用
         # 查询制定合约的市场信息
         self.query_market_data("IF1906")
+        self.is_trading = True
 
     def on_rsp_trading_account(self, trading_account, rsp_info, is_last):
         """`query_trading_account` 的数据回传函数。请不要保存 `trading_account`，只能保存其中的数据。
@@ -215,14 +218,7 @@ class Client(CtpClient):
     def on_idle(self):
         """空闲回传函数。当数据队列中没有数据需要处理，并且延迟大于 `idle_delay` 时调用
         """
-        self.counter += 1
-        if self.counter > 10:
-            try:
-                self.insert_order("IF1906", "buy", "open", 3700, 1, request_id=10)
-                self.counter = 0
-                self.log.info("Insert Order")
-            except RequestError:
-                self.log.error("insert order failed")
+        pass
 
     def on_exception(self, message):
         pass

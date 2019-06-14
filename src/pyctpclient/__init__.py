@@ -63,15 +63,21 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.4b2"
+__version__ = "0.3.5rc1"
 __author__ = "Holmes Conan"
 
 class CtpClient(_CtpClient):
     direction_dict = {'buy': D_BUY, 'sell': D_SELL}
     offset_flag_dict = {'open': OF_OPEN, 'close': OF_CLOSE, 'close_today': OF_CLOSE_TODAY, 'close_yesterday': OF_CLOSE_YESTERDAY}
 
-    def __init__(self, md_address, td_address, broker_id, user_id, password):
+    def __init__(self, md_address, td_address, broker_id, user_id, password, app_id=None, auth_code=None):
         _CtpClient.__init__(self, md_address, td_address, broker_id, user_id, password)
+        if app_id is not None:
+            self.app_id = app_id
+
+        if auth_code is not None:
+            self.auth_code = auth_code
+
         self.log = logging.getLogger('CTP')
         self.log.setLevel(logging.INFO)
         # create console handler with a higher log level
@@ -134,10 +140,20 @@ class CtpClient(_CtpClient):
 
     def on_td_front_connected(self):
         self.log.info("Trader front connected")
-        self.td_login()
+        if self.auth_code != '':
+            self.td_authenticate()
+        else:
+            self.td_login()
 
     def on_td_front_disconnected(self, reason):
         self.log.info("Trader front disconnected: %d", reason)
+
+    def on_td_authenticate(self, authenticate_info, rsp_info):
+        if rsp_info.error_id == 0:
+            self.log.info("Trader user authenticated.")
+            self.td_login()
+        else:
+            self.log.error("Authenticate failed: %d", rsp_info.error_id)
 
     def on_td_user_login(self, user_login_info, rsp_info):
         if rsp_info.error_id == 0:

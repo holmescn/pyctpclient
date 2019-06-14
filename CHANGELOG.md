@@ -1,5 +1,10 @@
 # pyctpclient Change History
 
+## 0.3.5rc1
+
+1. Change to v6.3.15 front_se
+2. Enter rc stage
+
 ## 0.3.4b2
 
 1. Add `on_exception` callback.

@@ -186,6 +186,7 @@ class CtpClient
 
         OnTdFrontConnected,
         OnTdFrontDisconnected,
+        OnTdAuthenticate,
         OnTdUserLogin,
         OnTdUserLogout,
         OnSettlementInfoConfirm,
@@ -221,6 +222,7 @@ class CtpClient
         ResponseType type;
         union {
             char base;
+            CThostFtdcRspAuthenticateField RspAuthenticateField;
             CThostFtdcRspUserLoginField RspUserLogin;
             CThostFtdcUserLogoutField UserLogout;
             CThostFtdcSpecificInstrumentField SpecificInstrument;
@@ -366,6 +368,7 @@ public:
     void QueryInvestorPositionDetail();
     void QueryMarketData(const std::string &instrumentId, int requestId);
 
+    void TdAuthenticate();
     void TdLogin();
     void ConfirmSettlementInfo();
     void InsertOrder(
@@ -386,6 +389,7 @@ public:
     // TraderSpi
 	virtual void OnTdFrontConnected() = 0;
     virtual void OnTdFrontDisconnected(int nReason) = 0;
+	virtual void OnTdAuthenticate(const CThostFtdcRspAuthenticateField *pRspAuthenticateField, const CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnTdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnTdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo) = 0;
 	virtual void OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, const CThostFtdcRspInfoField *pRspInfo) = 0;
@@ -427,6 +431,7 @@ struct CtpClientWrap : CtpClient
 
 	void OnTdFrontConnected() override;
 	void OnTdFrontDisconnected(int nReason) override;
+    void OnTdAuthenticate(const CThostFtdcRspAuthenticateField *pRspAuthenticateField, const CThostFtdcRspInfoField *pRspInfo) override;
 	void OnTdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLogin, const CThostFtdcRspInfoField *pRspInfo) override;
 	void OnTdUserLogout(const CThostFtdcUserLogoutField *pUserLogout, const CThostFtdcRspInfoField *pRspInfo) override;
 	void OnRspSettlementInfoConfirm(const CThostFtdcSettlementInfoConfirmField *pSettlementInfoConfirm, const CThostFtdcRspInfoField *pRspInfo) override;

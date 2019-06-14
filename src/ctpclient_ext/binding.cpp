@@ -453,6 +453,14 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_property_readonly("error_msg", [](CThostFtdcRspInfoField const *this_) { return py::bytes(this_->ErrorMsg); })
     ;
 
+  py::class_<CThostFtdcRspAuthenticateField>(m, "AuthenticateInfo")
+    .def_readonly("broker_id", &CThostFtdcRspAuthenticateField::BrokerID)
+    .def_readonly("user_id", &CThostFtdcRspAuthenticateField::UserID)
+    .def_readonly("user_product_info", &CThostFtdcRspAuthenticateField::UserProductInfo)
+    .def_readonly("app_id", &CThostFtdcRspAuthenticateField::AppID)
+    .def_readonly("app_type", &CThostFtdcRspAuthenticateField::AppType)
+    ;
+
   py::class_<CThostFtdcRspUserLoginField>(m, "UserLoginInfo")
     .def_readonly("trading_day", &CThostFtdcRspUserLoginField::TradingDay)
     .def_readonly("login_time", &CThostFtdcRspUserLoginField::LoginTime)
@@ -892,6 +900,8 @@ PYBIND11_MODULE(ctpclient, m) {
     .def_property("broker_id", &CtpClient::GetBrokerId, &CtpClient::SetBrokerId)
     .def_property("user_id", &CtpClient::GetUserId, &CtpClient::SetUserId)
     .def_property("password", &CtpClient::GetPassword, &CtpClient::SetPassword)
+    .def_property("auth_code", &CtpClient::GetAuthCode, &CtpClient::SetAuthCode)
+    .def_property("app_id", &CtpClient::GetAppId, &CtpClient::SetAppId)
     .def_property("instrument_ids", &CtpClient::GetInstrumentIds, &CtpClient::SetInstrumentIds)
     .def_property("idle_delay", &CtpClient::GetIdleDelay, &CtpClient::SetIdleDelay)
     .def("init", &CtpClient::Init)
@@ -912,6 +922,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def("on_1min", &CtpClient::On1Min)
     .def("on_1min_tick", &CtpClient::On1MinTick)
 
+    .def("td_authenticate", &CtpClient::TdAuthenticate)
     .def("td_login", &CtpClient::TdLogin)
     .def("confirm_settlement_info", &CtpClient::ConfirmSettlementInfo)
     .def("query_order", &CtpClient::QueryOrder, "instrument_id"_a="")
@@ -924,6 +935,7 @@ PYBIND11_MODULE(ctpclient, m) {
     .def("order_action", &CtpClient::OrderAction)
     .def("delete_order", &CtpClient::DeleteOrder)
     .def("on_td_front_connected", &CtpClient::OnTdFrontConnected)
+    .def("on_td_authenticate", &CtpClient::OnTdAuthenticate)
     .def("on_td_user_login", &CtpClient::OnTdUserLogin)
     .def("on_td_user_logout", &CtpClient::OnTdUserLogout)
     .def("on_settlement_info_confirm", &CtpClient::OnRspSettlementInfoConfirm)

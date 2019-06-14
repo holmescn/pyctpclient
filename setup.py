@@ -44,7 +44,7 @@ ctpclient_ext = Extension(
     library_dirs=[
         os.path.abspath('./src/pyctpclient')
     ],
-    libraries=["thostmduserapi", "thosttraderapi"],
+    libraries=["thostmduserapi_se", "thosttraderapi_se"],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
     runtime_library_dirs=["$ORIGIN"],

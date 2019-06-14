@@ -44,9 +44,9 @@ void TraderSpi::OnFrontDisconnected(int nReason)
     _client->Enqueue(r);
 }
 
-void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField * /* pRspAuthenticateField */, CThostFtdcRspInfoField * /* pRspInfo */, int /* nRequestID */, bool /* bIsLast */)
+void TraderSpi::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField * pRspInfo, int nRequestID, bool bIsLast)
 {
-    //
+    _client->Enqueue(CtpClient::ResponseType::OnTdAuthenticate, pRspAuthenticateField, pRspInfo, nRequestID, bIsLast);
 }
 
 void TraderSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)

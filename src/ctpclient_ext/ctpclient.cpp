@@ -187,10 +187,10 @@ void CtpClient::ProcessRequest(CtpClient::Request &r)
         assert_request(_tdApi->ReqQryTrade(&r.QryTrade, r.nRequestID));
         break;
     case RequestType::QueryTradingAccount:
-        assert_request(_tdApi->QueryTradingAccount(&r.QryTradingAccount, r.nRequestID));
+        assert_request(_tdApi->ReqQryTradingAccount(&r.QryTradingAccount, r.nRequestID));
         break;
     case RequestType::QueryInvestorPosition:
-        assert_request(_tdApi->QueryInvestorPosition(&r.QryInvestorPosition, r.nRequestID));
+        assert_request(_tdApi->ReqQryInvestorPosition(&r.QryInvestorPosition, r.nRequestID));
         break;
     case RequestType::QueryInvestorPositionDetail:
         assert_request(_tdApi->ReqQryInvestorPositionDetail(&r.QryInvestorPositionDetail, r.nRequestID));
@@ -260,6 +260,9 @@ void CtpClient::ProcessResponse(CtpClient::Response &r)
         break;
     case ResponseType::OnTdFrontDisconnected:
         OnTdFrontDisconnected(r.nReason);
+        break;
+    case ResponseType::OnTdAuthenticate:
+        OnTdAuthenticate(r.ptr<CThostFtdcRspAuthenticateField>(), r.ptr<CThostFtdcRspInfoField>());
         break;
     case ResponseType::OnTdUserLogin:
         OnTdUserLogin(r.ptr<CThostFtdcRspUserLoginField>(), r.ptr<CThostFtdcRspInfoField>());
@@ -545,6 +548,18 @@ void CtpClientWrap::OnMdError(const CThostFtdcRspInfoField *pRspInfo)
 
 #pragma region Trader API
 
+void CtpClient::TdAuthenticate()
+{
+    CThostFtdcReqAuthenticateField req;
+    memset(&req, 0, sizeof req);
+    strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
+    strncpy(req.UserID, _userId.c_str(), sizeof req.UserID);
+    strncpy(req.AuthCode, _authCode.c_str(), sizeof req.AuthCode);
+    strncpy(req.AppID, _appId.c_str(), sizeof req.AppID);
+
+    assert_request(_tdApi->ReqAuthenticate(&req, 0));
+}
+
 void CtpClient::TdLogin()
 {
     CThostFtdcReqUserLoginField req;
@@ -564,7 +579,7 @@ void CtpClient::ConfirmSettlementInfo()
     strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
     strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
 
-    assert_request(_tdApi->ConfirmSettlementInfo(&req, 0));
+    assert_request(_tdApi->ReqSettlementInfoConfirm(&req, 0));
 }
 
 void CtpClient::QueryOrder(const std::string &instrumentId)
@@ -774,6 +789,21 @@ void CtpClientWrap::OnTdUserLogin(const CThostFtdcRspUserLoginField *pRspUserLog
         "on_td_user_login",
         OnTdUserLogin,
         pRspUserLogin,
+        pRspInfo
+    );
+}
+
+void CtpClientWrap::OnTdAuthenticate(const CThostFtdcRspAuthenticateField *pRspAuthenticateField, const CThostFtdcRspInfoField *pRspInfo)
+{
+/* Acquire GIL before calling Python code */
+    py::gil_scoped_acquire acquire;
+
+    PYBIND11_OVERLOAD_PURE_NAME(
+        void,
+        CtpClient,
+        "on_td_authenticate",
+        OnTdAuthenticate,
+        pRspAuthenticateField,
         pRspInfo
     );
 }

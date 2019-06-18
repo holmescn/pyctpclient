@@ -241,7 +241,10 @@ if __name__ == "__main__":
         #td_address="tcp://180.168.146.187:10030",
         broker_id="9999",
         user_id="",
-        password=""
+        password="",
+        # 看穿式管理
+        app_id='',
+        auth_code='',
     )
     # 订阅要交易的品种, 请在初始化之前指定
     c.instrument_ids = ['IF1906']

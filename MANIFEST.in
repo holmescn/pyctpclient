@@ -1,2 +1,2 @@
 include README.rst
-include lib/*.so
+include lib/*_se.so

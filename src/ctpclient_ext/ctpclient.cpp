@@ -654,12 +654,13 @@ void CtpClient::QueryMarketData(const std::string &instrumentId, int nRequestID)
     _requestQueue.enqueue(r);
 }
 
-void CtpClient::InsertOrder(const std::string &instrumentId, Direction direction, OffsetFlag offsetFlag, TThostFtdcPriceType limitPrice, TThostFtdcVolumeType volume, py::kwargs kwargs)
+void CtpClient::InsertOrder(const std::string &instrumentId, const std::string &exchangeId, Direction direction, OffsetFlag offsetFlag, TThostFtdcPriceType limitPrice, TThostFtdcVolumeType volume, py::kwargs kwargs)
 {
     CThostFtdcInputOrderField req;
     memset(&req, 0, sizeof req);
     strncpy(req.BrokerID, _brokerId.c_str(), sizeof req.BrokerID);
     strncpy(req.InvestorID, _userId.c_str(), sizeof req.InvestorID);
+    strncpy(req.ExchangeID, exchangeId.c_str(), sizeof req.ExchangeID);
 
     strncpy(req.InstrumentID, instrumentId.c_str(), sizeof req.InstrumentID);
     req.VolumeTotalOriginal = volume;

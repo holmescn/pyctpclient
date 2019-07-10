@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 import os
 import logging
 from tempfile import mkdtemp
@@ -63,8 +64,17 @@ OAS_SUBMITTED = OrderActionStatus.SUBMITTED
 OAS_ACCEPTED = OrderActionStatus.ACCEPTED
 OAS_REJECTED = OrderActionStatus.REJECTED
 
-__version__ = "0.3.5rc1"
+__version__ = "0.3.6"
 __author__ = "Holmes Conan"
+
+
+EXCHANGE_ID_DICT = {
+    'CFFEX': {'IF','IC','IH','TS','TF','T'},
+    'SHFE': {'cu','al','zn','pb','ni','sn','au','ag','rb','wr','hc','sc','fu','bu','ru','sp'},
+    'CZCE': {'WH','PM','CF','SR','OI','RI','RS','RM','JR','LR','CY','AP','CJ','TA','MA','FG','ZC','SF','SM'},
+    'DCE': {'c','cs','a','b','m','y','p','fb','bb','jd','l','v','pp','j','jm','i','eg'}
+}
+
 
 class CtpClient(_CtpClient):
     direction_dict = {'buy': D_BUY, 'sell': D_SELL}
@@ -223,7 +233,13 @@ class CtpClient(_CtpClient):
             else:
                 raise ValueError("Invalid offset_flag: %s" % offset_flag)
 
-        _CtpClient.insert_order(self, instrument_id, direction, offset_flag, price, volume, **kwargs)
+        instrument = re.match(r'([A-Za-z]+)\d+', instrument_id).group(1)
+        for  k, v in EXCHANGE_ID_DICT.items():
+            if instrument in v:
+                exchange_id = k
+                break
+
+        _CtpClient.insert_order(self, instrument_id, exchange_id, direction, offset_flag, price, volume, **kwargs)
 
     def delete_order(self, order, request_id=0):
         _CtpClient.delete_order(self, order, request_id)

@@ -373,6 +373,7 @@ public:
     void ConfirmSettlementInfo();
     void InsertOrder(
         const std::string &instrumentId,
+        const std::string &exchangeId,
         Direction direction,
         OffsetFlag offsetFlag,
         TThostFtdcPriceType limitPrice,

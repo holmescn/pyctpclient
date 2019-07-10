@@ -1,5 +1,9 @@
 # pyctpclient Change History
 
+## 0.3.6
+
+1. Add `ExchangeID` for `insert_order`
+
 ## 0.3.5rc1
 
 1. Change to v6.3.15 front_se
